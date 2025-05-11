@@ -75,7 +75,8 @@ void *volume_control_thread(void *arg) {
     int volume = init_volume; // 初始音量值
     const int max_volume = 100;
     const int min_volume = 0;
-
+	
+	printf("\n");
 	printf("使用左键减少音量，右键增加音量\n");
 
     while (1) {
@@ -88,7 +89,7 @@ void *volume_control_thread(void *arg) {
                 printf(" "); // 未填充的部分
             }
         }
-        printf("] %d%%", volume);
+        printf("] %3d%%", volume);
 		fflush(stdout);
 
         // 捕获用户输入
@@ -132,158 +133,109 @@ void *playback_thread_func(void *arg) {
 		
 		if(ret == 0){
 			
-			printf("end of music file input! \n");
+			printf("\nend of music file input! \n");
 			exit(1);
 		}
 		
 		if(ret < 0){
 			
-			printf("read pcm from file! \n");
+			printf("\nread file error, err_info = %s \n", strerror(errno));
 			exit(1);
 		}
 
 		// 向PCM设备写入数据,
 		while((ret = snd_pcm_writei(pcm_handle, buff, frames)) < 0){
 			if (ret == -EPIPE){
-				
-                  /* EPIPE means underrun -32  的错误就是缓存中的数据不够 */
-                  printf("underrun occurred -32, err_info = %s \n", snd_strerror(ret));
-		 //完成硬件参数设置，使设备准备好
-                  snd_pcm_prepare(pcm_handle);
+
+				/* EPIPE means underrun -32  的错误就是缓存中的数据不够 */
+				printf("\nunderrun occurred -32, err_info = %s \n", snd_strerror(ret));
+				//完成硬件参数设置，使设备准备好
+				snd_pcm_prepare(pcm_handle);
 			
             } else if(ret < 0){
-				printf("ret value is : %d \n", ret);
+				printf("\nret value is : %d \n", ret);
 				debug_msg(-1, "write to audio interface failed");
 			}
 		}
 	}
-
-	fprintf(stderr, "\nend of music file input\n");
-
 }
 
 
 int main(int argc, char *argv [])
 {
-	atexit(disable_raw_mode); // 程序退出时恢复终端设置
-
-	int ret, rate_arg, format_arg;
+	int ret;
 	bool flag = true;
 
-	while((ret = getopt(argc,argv,"m:f:r:")) != -1){
+	while((ret = getopt(argc,argv,"m:")) != -1){
 		flag = false;
 		switch(ret){
 			case 'm':
-				printf("打开文件 \n");
+				//printf("打开文件 \n");
 				open_music_file(optarg);
-				break;
-			case 'f':
-				
-				format_arg = atoi(optarg);
-				
-				// 判断是哪种采样位
-				switch(format_arg){
-					case 161:
-						printf("format_arg value is : S16LE \n");
+				printf("正在播放: %s \n", optarg);
+
+				rate = wav_header.sample_rate;
+
+				bool little_endian;
+				if (strncmp(wav_header.chunk_id, "RIFF", 4) == 0) {
+					little_endian = true;
+					//printf("文件是小端格式\n");
+				} else if (strncmp(wav_header.chunk_id, "RIFX", 4) == 0) {
+					little_endian = false;
+					//printf("文件是大端格式\n");
+				} else {
+					printf("未知文件格式\n");
+					exit(1);
+				}
+
+				switch (wav_header.bits_per_sample) {
+                case 16:
+					if(little_endian)
 						pcm_format = SND_PCM_FORMAT_S16_LE;
-						break;
-					
-					case 162:
-						printf("format_arg value is : S16BE \n");
+					else
 						pcm_format = SND_PCM_FORMAT_S16_BE;
-						break;
-					
-					case 201:
-						printf("format_arg value is : S20LE \n");
-						//pcm_format = SND_PCM_FORMAT_S20_LE;
-						break;
-					
-					case 202:
-						printf("format_arg value is : S20BE \n");
-						//pcm_format = SND_PCM_FORMAT_S20_BE;
-						break;
-
-					case 241:
-						printf("format_arg value is : S24LE \n");
-						pcm_format = SND_PCM_FORMAT_S24_LE;
-						break;
-
-					case 242:
-						printf("format_arg value is : S24BE \n");
-						pcm_format = SND_PCM_FORMAT_S24_BE;
-						break;
-
-					case 2431:
-						printf("format_arg value is : S243LE \n");
-						pcm_format = SND_PCM_FORMAT_S24_3LE;
-						break;
-					
-					case 2432:
-						printf("format_arg value is : S243BE \n");
-						pcm_format = SND_PCM_FORMAT_S24_3BE;
-						break;
-
-					case 321:
-						printf("format_arg value is : S32LE \n");
+					//printf("16位采样\n");
+                    break;
+                case 24:
+					if(little_endian){
+						if(wav_header.block_align == wav_header.num_channels * 4){
+							pcm_format = SND_PCM_FORMAT_S24_LE;
+							//printf("24位采样\n");
+						}else if(wav_header.block_align == wav_header.num_channels * 3){
+							pcm_format = SND_PCM_FORMAT_S24_3LE;
+							//printf("24位3采样\n");
+						}else{
+							printf("不支持的采样位数: %d\n", wav_header.bits_per_sample);
+							exit(1);
+						}
+					}else{
+						if(wav_header.block_align == wav_header.num_channels * 4){
+							pcm_format = SND_PCM_FORMAT_S24_BE;
+							//printf("24位采样\n");
+						}else if(wav_header.block_align == wav_header.num_channels * 3){
+							pcm_format = SND_PCM_FORMAT_S24_3BE;
+							//printf("24位3采样\n");
+						}else{
+							printf("不支持的采样位数: %d\n", wav_header.bits_per_sample);
+							exit(1);
+						}
+					}
+					break;
+                case 32:
+					if(little_endian)
 						pcm_format = SND_PCM_FORMAT_S32_LE;
-						break;
-
-					case 322:
-						printf("format_arg value is : S32BE \n");
+					else
 						pcm_format = SND_PCM_FORMAT_S32_BE;
-						break;
-						
-
-				}
-				break;
-				
-			case 'r':
-				
-				rate_arg = atoi(optarg);
-				
-				if(rate_arg == 44){
-					
-					printf("rate_arg value is : 44.1HZ \n");
-					rate = 44100;
-				
-				}else if(rate_arg == 88){
-					
-					printf("rate_arg value is : 88.2HZ \n");
-					rate = 88200;
-					
-				}else{
-					
-					printf("rate_arg value is : 8HZ \n");
-					rate = 8000;
-					
-				}
+					printf("32位采样\n");
+                    break;
+                default:
+                    printf("不支持的采样位数: %d\n", wav_header.bits_per_sample);
+                    exit(1);
+            	}
 				break;
 		}
 	}
-
-	if(flag){
-		printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
-		printf("Either 1'st, 2'nd, 3'th or all parameters were missing \n");
-		printf("\n");
-		printf("1'st : -m [music_filename] \n");
-		printf("		music_filename.wav \n");
-		printf("\n");
-		printf("2'nd : -f [format 241bit or 16bit or 32bit] \n");
-		printf("		161 for S16_LE, 162 for S16_BE \n");
-		printf("		241 for S24_LE, 242 for S24_BE \n");
-		printf("		2431 for S24_3LE, 2432 for S24_3BE \n");
-		printf("		321 for S32_LE, 322 for S32_BE \n");
-		printf("\n");
-		printf("3'th : -r [rate,44 or 88] \n");
-		printf("		44 for 44100hz \n");
-		printf("		82 for 88200hz \n");
-		printf("\n");
-		printf("For example: ./alsa -m 1.wav -f 161 -r 44 \n");
-		printf("+++++++++++++++++++++++++++++++++++++++++++++++++++++++++\n");
-		exit(1);
-	}
 	
-
 	
 	// 在堆栈上分配snd_pcm_hw_params_t结构体的空间，参数是配置pcm硬件的指针,返回0成功
 	debug_msg(snd_pcm_hw_params_malloc(&hw_params), "分配snd_pcm_hw_params_t结构体");
@@ -305,10 +257,8 @@ int main(int argc, char *argv [])
 	// 一般为交错模式
 	debug_msg(snd_pcm_hw_params_set_access(pcm_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED), "设置交错模式（访问模式）");
 
-	//TODO 为什么要手动设置format
 	debug_msg(snd_pcm_hw_params_set_format(pcm_handle, hw_params, pcm_format), "设置样本长度(位数)");
 	
-	//TODO 为什么要手动设置rate
 	unsigned int exact_rate = rate; // ALSA 可能会调整采样率
 	debug_msg(snd_pcm_hw_params_set_rate_near(pcm_handle, hw_params, &exact_rate, 0), "设置采样率");
 	if (exact_rate != rate) {
@@ -324,13 +274,13 @@ int main(int argc, char *argv [])
 	// 为buff分配buffer_size大小的内存空间
 	buff = (unsigned char *)malloc(buffer_size); // 用户区的buff
 	
-	if(format_arg == 161 || format_arg == 162){
+	if(wav_header.bits_per_sample == 16){
 
 		frames = buffer_size >> 2;
 	
 		debug_msg(snd_pcm_hw_params_set_buffer_size(pcm_handle, hw_params, frames), "设置S16_LE OR S16_BE缓冲区");
 		
-	}else if(format_arg == 2431 || format_arg == 2432){
+	}else if(wav_header.bits_per_sample == 24 && wav_header.block_align == wav_header.num_channels * 3){
 
 		frames = buffer_size / 6;
 		
@@ -339,7 +289,7 @@ int main(int argc, char *argv [])
 		*/
 		debug_msg(snd_pcm_hw_params_set_buffer_size(pcm_handle, hw_params, frames), "设置S24_3LE OR S24_3BE的缓冲区");
 		
-	}else if(format_arg == 321 || format_arg == 322 || format_arg == 241 || format_arg == 242){
+	}else if(wav_header.bits_per_sample == 32 || (wav_header.bits_per_sample == 24 && wav_header.block_align == wav_header.num_channels * 4)){
 
 		frames = buffer_size >> 3;
 		/*
@@ -378,7 +328,7 @@ int main(int argc, char *argv [])
 
 void open_music_file(const char *path_name){
 
-	// TODO: 打开音频文件，输出其文件头信息
+	// 打开音频文件，输出其文件头信息
 	// 直接复制part1的相关代码到此处即可
 
 	fp = fopen(path_name, "rb");
@@ -387,11 +337,16 @@ void open_music_file(const char *path_name){
 		exit(1);
 	}
 
+	if (strcmp(path_name + strlen(path_name) - 4, ".wav") != 0) {
+        printf("Error: The file must be a .wav file\n");
+        exit(1);
+    }
+
 	// 读取文件头
 	fread(&wav_header, sizeof(struct WAV_HEADER), 1, fp);
 
 	// 打印文件头信息
-	printf("wav文件头结构体大小: %d\n", (int)sizeof(wav_header));
+	/*printf("wav文件头结构体大小: %d\n", (int)sizeof(wav_header));
     printf("RIFF标识: %.4s\n", wav_header.chunk_id);
     printf("文件大小: %d\n", wav_header.chunk_size);
     printf("文件格式: %.4s\n", wav_header.format);
@@ -404,7 +359,7 @@ void open_music_file(const char *path_name){
     printf("数据块对齐单位: %d\n", wav_header.block_align);
     printf("采样位数(长度): %d\n", wav_header.bits_per_sample);
     printf("数据块标识: %.4s\n", wav_header.sub_chunk2_id);
-    printf("数据块长度: %d\n", wav_header.sub_chunk2_size);
+    printf("数据块长度: %d\n", wav_header.sub_chunk2_size);*/
 
 }
 
