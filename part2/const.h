@@ -68,4 +68,9 @@ FILE *fp;
 bool debug_msg(int result, const char *str);
 void open_music_file(const char *path_name);
 
+pthread_t playback_thread, volume_thread; // 播放线程和音量控制线程
 
+snd_mixer_t *mixer_handle;
+snd_mixer_elem_t *elem;
+snd_mixer_selem_id_t *sid;
+long init_volume = 50; // 初始音量
