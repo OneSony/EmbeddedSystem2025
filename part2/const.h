@@ -65,10 +65,17 @@ FILE *fp;
 
 
 // 函数声明
-bool debug_msg(int result, const char *str);
-void open_music_file(const char *path_name);
+int open_music_file(const char *path_name);
+void handle_sigint(int sig);
+void *playback_thread_func(void *arg);
+void *volume_control_thread(void *arg);
+void enable_raw_mode();
+void disable_raw_mode();
+int init_pcm();
+int init_mixer();
 
-pthread_t playback_thread, volume_thread; // 播放线程和音量控制线程
+pthread_t playback_thread = 0;
+pthread_t volume_thread = 0; // 播放线程和音量控制线程
 
 snd_mixer_t *mixer_handle;
 snd_mixer_elem_t *elem;
