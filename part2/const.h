@@ -28,11 +28,11 @@ int wav_header_size; // 接收wav_header数据结构体的大小
 	ALSA的变量定义
 **/
 // 定义用于PCM流和硬件的 
-snd_pcm_hw_params_t *hw_params;
+snd_pcm_hw_params_t *hw_params = NULL;
 // PCM设备的句柄  想要操作PCM设备必须定义
-snd_pcm_t *pcm_handle;
+snd_pcm_t *pcm_handle = NULL;
 // 定义pcm的name snd_pcm_open函数会用到,strdup可以直接把要复制的内容复制给没有初始化的指针，因为它会自动分配空间给目的指针，需要手动free()进行内存回收。
-char *pcm_name;
+char *pcm_name = NULL;
 // 定义是播放还是回放等等，播放流 snd_pcm_open函数会用到 可以在 https://www.alsa-project.org/alsa-doc/alsa-lib/group___p_c_m.html#gac23b43ff55add78638e503b9cc892c24 查看
 snd_pcm_stream_t stream = SND_PCM_STREAM_PLAYBACK;
 // 定义采样位数
@@ -42,8 +42,7 @@ snd_pcm_format_t pcm_format;
 // 缓存大小
 #define BUF_LEN 1024
 //char buf[BUF_LEN];
-unsigned char *buff;
-unsigned char *buff1;
+unsigned char *buff = NULL;
 
 
 // 周期数
@@ -61,7 +60,7 @@ snd_pcm_uframes_t buffer_size;
 unsigned int rate;
 
 // 音乐文件指针变量
-FILE *fp;
+FILE *fp = NULL;
 
 
 // 函数声明
@@ -73,11 +72,13 @@ void enable_raw_mode();
 void disable_raw_mode();
 int init_pcm();
 int init_mixer();
+void free_pcm_resources();
+void free_mixer_resources();
 
 pthread_t playback_thread = 0;
 pthread_t volume_thread = 0; // 播放线程和音量控制线程
 
-snd_mixer_t *mixer_handle;
-snd_mixer_elem_t *elem;
-snd_mixer_selem_id_t *sid;
+snd_mixer_t *mixer_handle = NULL;
+snd_mixer_elem_t *elem = NULL;
+snd_mixer_selem_id_t *sid = NULL;
 long init_volume = 50; // 初始音量
