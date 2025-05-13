@@ -117,30 +117,30 @@ void disable_raw_mode() {
 }
 
 int init_mixer() {
-    if (snd_mixer_open(&mixer_handle, 0) != 0) {
+    if (snd_mixer_open(&mixer_handle, 0) < 0) {
         printf("无法打开混音器\n");
         return 1;
     }
 
-    if (snd_mixer_attach(mixer_handle, "default") != 0) {
+    if (snd_mixer_attach(mixer_handle, "default") < 0) {
         printf("无法附加混音器\n");
         snd_mixer_close(mixer_handle);
         return 1;
     }
 
-    if (snd_mixer_selem_register(mixer_handle, NULL, NULL) != 0) {
+    if (snd_mixer_selem_register(mixer_handle, NULL, NULL) < 0) {
         printf("无法注册混音器控件\n");
         snd_mixer_close(mixer_handle);
         return 1;
     }
 
-    if (snd_mixer_load(mixer_handle) != 0) {
+    if (snd_mixer_load(mixer_handle) < 0) {
         printf("无法加载混音器控件\n");
         snd_mixer_close(mixer_handle);
         return 1;
     }
 
-    if (snd_mixer_selem_id_malloc(&sid) != 0) {
+    if (snd_mixer_selem_id_malloc(&sid) < 0) {
         printf("无法分配控件 ID\n");
         snd_mixer_close(mixer_handle);
         return 1;
@@ -168,20 +168,20 @@ int init_mixer() {
 }
 
 int init_pcm() {
-    if (snd_pcm_hw_params_malloc(&hw_params) != 0) {
+    if (snd_pcm_hw_params_malloc(&hw_params) < 0) {
         printf("分配snd_pcm_hw_params_t结构体失败\n");
         return 1;
     }
 
     pcm_name = strdup("default");
-    if (snd_pcm_open(&pcm_handle, pcm_name, SND_PCM_STREAM_PLAYBACK, 0) != 0) {
+    if (snd_pcm_open(&pcm_handle, pcm_name, SND_PCM_STREAM_PLAYBACK, 0) < 0) {
         printf("打开PCM设备失败\n");
         snd_pcm_hw_params_free(hw_params); // 释放 hw_params
         free(pcm_name); // 释放 pcm_name
         return 1;
     }
 
-    if (snd_pcm_hw_params_any(pcm_handle, hw_params) != 0) {
+    if (snd_pcm_hw_params_any(pcm_handle, hw_params) < 0) {
         printf("初始化配置空间失败\n");
         snd_pcm_close(pcm_handle); // 关闭 PCM 设备
         snd_pcm_hw_params_free(hw_params); // 释放 hw_params
@@ -189,7 +189,7 @@ int init_pcm() {
         return 1;
     }
 
-    if (snd_pcm_hw_params_test_access(pcm_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) != 0) {
+    if (snd_pcm_hw_params_test_access(pcm_handle, hw_params, SND_PCM_ACCESS_RW_INTERLEAVED) < 0) {
         printf("测试交错模式失败\n");
         snd_pcm_close(pcm_handle); // 关闭 PCM 设备
         snd_pcm_hw_params_free(hw_params); // 释放 hw_params
@@ -197,7 +197,7 @@ int init_pcm() {
         return 1;
     }
 
-    if (snd_pcm_hw_params_set_format(pcm_handle, hw_params, pcm_format) != 0) {
+    if (snd_pcm_hw_params_set_format(pcm_handle, hw_params, pcm_format) < 0) {
         printf("设置样本长度失败\n");
         snd_pcm_close(pcm_handle); // 关闭 PCM 设备
         snd_pcm_hw_params_free(hw_params); // 释放 hw_params
@@ -206,7 +206,7 @@ int init_pcm() {
     }
 
     unsigned int exact_rate = rate;
-    if (snd_pcm_hw_params_set_rate_near(pcm_handle, hw_params, &exact_rate, 0) != 0) {
+    if (snd_pcm_hw_params_set_rate_near(pcm_handle, hw_params, &exact_rate, 0) < 0) {
         printf("设置采样率失败\n");
         snd_pcm_close(pcm_handle); // 关闭 PCM 设备
         snd_pcm_hw_params_free(hw_params); // 释放 hw_params
@@ -214,7 +214,7 @@ int init_pcm() {
         return 1;
     }
 
-    if (snd_pcm_hw_params_set_channels(pcm_handle, hw_params, wav_header.num_channels) != 0) {
+    if (snd_pcm_hw_params_set_channels(pcm_handle, hw_params, wav_header.num_channels) < 0) {
         printf("设置通道数失败\n");
         snd_pcm_close(pcm_handle); // 关闭 PCM 设备
         snd_pcm_hw_params_free(hw_params); // 释放 hw_params
@@ -235,7 +235,7 @@ int init_pcm() {
     // 根据采样位数设置缓冲区大小
     if (wav_header.bits_per_sample == 16) {
         frames = buffer_size >> 2;
-        if (snd_pcm_hw_params_set_buffer_size(pcm_handle, hw_params, frames) != 0) {
+        if (snd_pcm_hw_params_set_buffer_size(pcm_handle, hw_params, frames) < 0) {
             printf("设置S16_LE OR S16_BE缓冲区失败\n");
             free(buff); // 释放 buff
             snd_pcm_close(pcm_handle); // 关闭 PCM 设备
@@ -245,7 +245,7 @@ int init_pcm() {
         }
     } else if (wav_header.bits_per_sample == 24 && wav_header.block_align == wav_header.num_channels * 3) {
         frames = buffer_size / 6;
-        if (snd_pcm_hw_params_set_buffer_size(pcm_handle, hw_params, frames) != 0) {
+        if (snd_pcm_hw_params_set_buffer_size(pcm_handle, hw_params, frames) < 0) {
             printf("设置S24_3LE OR S24_3BE缓冲区失败\n");
             free(buff); // 释放 buff
             snd_pcm_close(pcm_handle); // 关闭 PCM 设备
@@ -255,7 +255,7 @@ int init_pcm() {
         }
     } else if (wav_header.bits_per_sample == 32 || (wav_header.bits_per_sample == 24 && wav_header.block_align == wav_header.num_channels * 4)) {
         frames = buffer_size >> 3;
-        if (snd_pcm_hw_params_set_buffer_size(pcm_handle, hw_params, frames) != 0) {
+        if (snd_pcm_hw_params_set_buffer_size(pcm_handle, hw_params, frames) < 0) {
             printf("设置S32_LE OR S32_BE OR S24_LE OR S24_BE缓冲区失败\n");
             free(buff); // 释放 buff
             snd_pcm_close(pcm_handle); // 关闭 PCM 设备
@@ -265,7 +265,7 @@ int init_pcm() {
         }
     }
 
-    if (snd_pcm_hw_params(pcm_handle, hw_params) != 0) {
+    if (snd_pcm_hw_params(pcm_handle, hw_params) < 0) {
         printf("设置的硬件配置参数失败\n");
         free(buff); // 释放 buff
         snd_pcm_close(pcm_handle); // 关闭 PCM 设备
@@ -320,10 +320,12 @@ void *volume_control_thread(void *arg) {
 		if (volume < min_volume) volume = min_volume;
 		if (volume > max_volume) volume = max_volume;
 
+		pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
         long min, max;
 		snd_mixer_selem_get_playback_volume_range(elem, &min, &max);
 		long set_volume = min + (volume * (max - min) / 100);
 		snd_mixer_selem_set_playback_volume_all(elem, set_volume);
+		pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
     }
 
     return NULL;
@@ -341,7 +343,7 @@ void *playback_thread_func(void *arg) {
 		
 		if(ret == 0){
 			
-			printf("\n播放完成\n");
+			// 把输出放到主函数, 避免输出和音量线程干扰
 			break;
 		}
 		
@@ -506,6 +508,7 @@ int main(int argc, char *argv [])
 	volume_thread = 0; // 音量控制线程退出
 	disable_raw_mode(); // 恢复标准模式
 
+	printf("\n播放完成\n");
 
 	fclose(fp);
 	snd_pcm_close(pcm_handle);
