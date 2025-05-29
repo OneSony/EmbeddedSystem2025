@@ -42,3 +42,10 @@ snd_mixer_t *mixer_handle = NULL;
 snd_mixer_elem_t *elem = NULL;
 snd_mixer_selem_id_t *sid = NULL;
 long init_volume = 50; // 初始音量
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+
+bool pause_flag = false; // 暂停标志
+bool exit_flag = false; // 退出标志
+bool finish_flag = false; // 播放完成标志

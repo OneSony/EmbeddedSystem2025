@@ -121,22 +121,35 @@ int init_pcm() {
 
 void *playback_thread_func(void *arg) {
 
-	int ret;
-	// 跳过 WAV 文件头
-	fseek(fp, sizeof(struct WAV_HEADER), SEEK_SET);
-	// feof函数检测文件结束符，结束：非0, 没结束：0 !feof(fp)
-	while(1){
-		// 读取文件数据放到缓存中
-		ret = fread(buff, 1, buffer_size, fp);
+    while(1){ //播放线程循环
+
+        // 检查标志
+        pthread_mutex_lock(&mutex);
+
+        if (exit_flag) {
+            pthread_mutex_unlock(&mutex);
+            break; // 退出线程
+        }
+        
+        while (pause_flag) {
+            printf("Thread paused...\n");
+            pthread_cond_wait(&cond, &mutex);  // 会释放 mutex 并等待 cond 被 signal
+        }
+        pthread_mutex_unlock(&mutex);
+
+
+        // 播放音频
+        int ret = fread(buff, 1, buffer_size, fp);
 		
-		if(ret == 0){
-			
-			// 把输出放到主函数, 避免输出和音量线程干扰
-			break;
+		if(ret == 0){ // 读取到文件末尾
+            pthread_mutex_lock(&mutex);
+            finish_flag = true;
+            pause_flag = true; // 暂停播放
+            pthread_mutex_unlock(&mutex);
+			continue; //让线程卡在上面的暂停中, 等待control线程操作
 		}
 		
 		if(ret < 0){
-			
 			printf("\n文件读取错误: %s \n", strerror(errno));
 			break;
 		}
@@ -177,5 +190,7 @@ void *playback_thread_func(void *arg) {
 				exit(EXIT_FAILURE); // 使用 EXIT_FAILURE 表示程序异常退出
 			}
 		}
-	}
+
+    }
+
 }

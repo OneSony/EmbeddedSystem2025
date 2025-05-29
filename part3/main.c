@@ -71,6 +71,7 @@ int main(int argc, char *argv [])
 	bool flag = true;
 
 	// 分析文件
+	//TODO 应该挪到控制线程中
 	while((ret = getopt(argc,argv,"m:")) != -1){
 		flag = false;
 		switch(ret){
@@ -161,14 +162,13 @@ int main(int argc, char *argv [])
 	pthread_create(&playback_thread, NULL, playback_thread_func, NULL);
 	pthread_create(&control_thread, NULL, control_thread_func, NULL);
 
-	pthread_join(playback_thread, NULL); //阻塞等待
+	pthread_join(control_thread, NULL); //阻塞等待
+	pthread_join(playback_thread, NULL); // 阻塞等待
 	playback_thread = 0; // 播放线程退出
-	pthread_cancel(control_thread); // 取消音量控制线程
-	pthread_join(control_thread, NULL); // 阻塞等待
 	control_thread = 0; // 音量控制线程退出
 	disable_raw_mode(); // 恢复标准模式
 
-	printf("\n播放完成\n");
+	printf("\n结束\n");
 
 	free_pcm_resources();
 	free_mixer_resources();

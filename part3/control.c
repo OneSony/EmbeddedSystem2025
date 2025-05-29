@@ -69,6 +69,10 @@ int init_mixer() {
 
 void *control_thread_func(void *arg) {
 
+    //TODO 控制文件播放
+    //维护一个播放列表
+    //检查play线程是否播放完毕??
+
     int volume = init_volume; // 初始音量值
     const int max_volume = 100;
     const int min_volume = 0;
@@ -103,6 +107,27 @@ void *control_thread_func(void *arg) {
                     volume += 5; // 增大音量
                 }
             }
+        } else if (input == 'q') { // 'q' 键退出
+            pthread_mutex_lock(&mutex);
+            exit_flag = true;
+            pthread_mutex_unlock(&mutex);
+            break; // 退出循环
+        } else if (input == 'p') { // 'p' 键暂停
+            pthread_mutex_lock(&mutex);
+            pause_flag = !pause_flag;
+            if (pause_flag) {
+                // 先暂停声卡
+                if (snd_pcm_pause(pcm_handle, 1) < 0) {
+                    printf("\n声卡不支持无缝暂停\n");
+                }
+            } else {
+                // 先恢复声卡
+                if (snd_pcm_pause(pcm_handle, 0) < 0) {
+                    printf("\n声卡不支持无缝暂停\n");
+                }
+                pthread_cond_signal(&cond); // 唤醒播放线程
+            }
+            pthread_mutex_unlock(&mutex);
         }
 
 		if (volume < min_volume) volume = min_volume;

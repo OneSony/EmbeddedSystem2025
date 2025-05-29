@@ -95,3 +95,11 @@ extern snd_mixer_t *mixer_handle;
 extern snd_mixer_elem_t *elem;
 extern snd_mixer_selem_id_t *sid;
 extern long init_volume; // 初始音量
+
+
+// 线程通讯
+extern bool pause_flag; // 暂停标志
+extern bool exit_flag; // 退出标志
+extern bool finish_flag; // 播放完成标志
+extern pthread_mutex_t mutex;
+extern pthread_cond_t cond;
