@@ -11,6 +11,10 @@
 #include <termios.h>
 #include <signal.h>
 
+#define MAX_WAV_FILES 256
+#define MAX_FILENAME_LEN 256
+
+
 // 定义音乐全局结构体，参考 https://www.cnblogs.com/ranson7zop/p/7657874.html 表3
 // int 由uint32_t代替，short 由uint16_t代替，因为在跨平台后有可能不兼容，类型长度不一致，使用统一的类型
 struct WAV_HEADER
@@ -36,6 +40,10 @@ struct WAV_HEADER
 extern struct WAV_HEADER wav_header; // 定义wav_header结构体变量
 extern int wav_header_size; // 接收wav_header数据结构体的大小
 
+
+extern int track_index; // 当前播放的曲目索引
+extern char *wav_files[]; // wav文件名数组
+extern int wav_file_count; // 当前wav文件数量
 
 /**
 	ALSA的变量定义
@@ -94,12 +102,14 @@ extern pthread_t control_thread; // 播放线程和音量控制线程
 extern snd_mixer_t *mixer_handle;
 extern snd_mixer_elem_t *elem;
 extern snd_mixer_selem_id_t *sid;
-extern long init_volume; // 初始音量
+extern long init_volume; // 初始音量, 初始化mixer用
+extern long current_volume; // 记录用户操作的音量
 
 
 // 线程通讯
 extern bool pause_flag; // 暂停标志
 extern bool exit_flag; // 退出标志
 extern bool finish_flag; // 播放完成标志
+extern bool error_flag; // 错误标志
 extern pthread_mutex_t mutex;
 extern pthread_cond_t cond;

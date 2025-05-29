@@ -1,5 +1,9 @@
 #include "main.h"
 
+int track_index = 0; // 当前播放的曲目索引
+char *wav_files[MAX_WAV_FILES];
+int wav_file_count = 0;
+
 // 初始化采样率
 unsigned int rate;
 
@@ -41,6 +45,7 @@ pthread_t control_thread = 0; // 播放线程和音量控制线程
 snd_mixer_t *mixer_handle = NULL;
 snd_mixer_elem_t *elem = NULL;
 snd_mixer_selem_id_t *sid = NULL;
+long current_volume = 50; // 当前音量
 long init_volume = 50; // 初始音量
 
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -49,3 +54,4 @@ pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 bool pause_flag = false; // 暂停标志
 bool exit_flag = false; // 退出标志
 bool finish_flag = false; // 播放完成标志
+bool error_flag = false; // 错误标志

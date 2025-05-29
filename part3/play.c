@@ -144,13 +144,15 @@ void *playback_thread_func(void *arg) {
 		if(ret == 0){ // 读取到文件末尾
             pthread_mutex_lock(&mutex);
             finish_flag = true;
-            pause_flag = true; // 暂停播放
             pthread_mutex_unlock(&mutex);
-			continue; //让线程卡在上面的暂停中, 等待control线程操作
+			break;
 		}
 		
 		if(ret < 0){
 			printf("\n文件读取错误: %s \n", strerror(errno));
+            pthread_mutex_lock(&mutex);
+            error_flag = true;
+            pthread_mutex_unlock(&mutex);
 			break;
 		}
 
@@ -164,30 +166,15 @@ void *playback_thread_func(void *arg) {
 				snd_pcm_prepare(pcm_handle);
 			
             } else if(ret < 0){
+
+                //TODO
 				printf("\nret value is : %d \n", ret);
 				printf("\nwrite to audio interface failed: %s \n", snd_strerror(ret));
 
-				if (control_thread != 0) {
-					pthread_cancel(control_thread);
-					pthread_join(control_thread, NULL);
-					control_thread = 0;
-					printf("音量控制线程已取消并退出。\n");
-				}
-
-                free_pcm_resources();
-                free_mixer_resources();
-				if (fp != NULL) {
-					fclose(fp);
-					fp = NULL;
-					printf("音频文件已关闭。\n");
-				}
-
-				// 恢复终端模式
-				disable_raw_mode();
-				printf("终端模式已恢复。\n");
-
-				// 退出程序
-				exit(EXIT_FAILURE); // 使用 EXIT_FAILURE 表示程序异常退出
+				pthread_mutex_lock(&mutex);
+                error_flag = true;
+                pthread_mutex_unlock(&mutex);
+                break;
 			}
 		}
 
