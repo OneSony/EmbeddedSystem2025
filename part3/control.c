@@ -198,28 +198,25 @@ void *control_thread_func(void *arg) {
 	
 
     play_track(track_index); // 播放当前曲目
-    printf("当前曲目: %s\n", wav_files[track_index]);
+    //printf("当前曲目: %s\n", wav_files[track_index]);
 
-
-	printf("\n");
-	printf("使用左方向键减少音量，右方向键增加音量\n");
 
     while (1) {
 
         if(finish_flag) {
-            printf("\n当前曲目播放完毕\n");
+            //printf("\n当前曲目播放完毕\n");
             pthread_join(playback_thread, NULL); // 等待播放线程安全退出
             playback_thread = 0; // 重置播放线程
             finish_flag = false; // 重置播放完成标志
             // 切换到下一曲目
             track_index = (track_index + 1) % wav_file_count;
             play_track(track_index);
-            printf("当前曲目: %s\n", wav_files[track_index]);
+            //printf("当前曲目: %s\n", wav_files[track_index]);
         }
 
 
         // 显示音量进度条
-        printf("\r音量: [");
+        /*printf("\r音量: [");
         for (int i = 0; i < max_volume / 2; i++) {
             if (i < current_volume / 2) {
                 printf("#"); // 填充的部分
@@ -228,7 +225,7 @@ void *control_thread_func(void *arg) {
             }
         }
         printf("] %3ld%%", current_volume);
-		fflush(stdout);
+		fflush(stdout);*/
 
         // 捕获用户输入
         char input = 0;
@@ -270,7 +267,7 @@ void *control_thread_func(void *arg) {
             } else if (input == 'p') { // 'p' 键暂停
                 pthread_mutex_lock(&mutex);
                 pause_flag = !pause_flag;
-                printf("\n%s\n", pause_flag ? "已暂停" : "已恢复");
+                //printf("\n%s\n", pause_flag ? "已暂停" : "已恢复");
                 if(playback_thread != 0) {
                     if (pause_flag) {
                         // 先暂停声卡
@@ -287,6 +284,7 @@ void *control_thread_func(void *arg) {
                 }
                 pthread_mutex_unlock(&mutex);
             } else if (input == 'n') { // 'n' 键切换到下一曲目
+                //printf("\n切换到下一曲目...\n");
 
                 end_playback(); // 结束当前播放
 
@@ -295,7 +293,7 @@ void *control_thread_func(void *arg) {
                 exit_flag = false;
                 pause_flag = false;
                 play_track(track_index);
-                printf("\n当前曲目: %s\n", wav_files[track_index]);
+                //printf("\n当前曲目: %s\n", wav_files[track_index]);
                 
 
             } else if (input == 'b') { // 'b' 键切换到上一曲目
@@ -306,7 +304,7 @@ void *control_thread_func(void *arg) {
                 exit_flag = false;
                 pause_flag = false;
                 play_track(track_index);
-                printf("\n当前曲目: %s\n", wav_files[track_index]);
+                //printf("\n当前曲目: %s\n", wav_files[track_index]);
             }
         } else {
             continue; // 没有输入则继续循环

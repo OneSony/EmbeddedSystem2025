@@ -1,4 +1,3 @@
-
 #include "main.h"
 
 
@@ -121,63 +120,65 @@ int init_pcm() {
 
 void *playback_thread_func(void *arg) {
 
-    while(1){ //播放线程循环
+    // 初始化播放参数
+    pthread_mutex_lock(&mutex);
+    played_bytes = 0;
+    pthread_mutex_unlock(&mutex);
+
+    while(1){ // 播放线程循环
 
         // 检查标志
         pthread_mutex_lock(&mutex);
-
         if (exit_flag) {
             pthread_mutex_unlock(&mutex);
             break; // 退出线程
         }
-        
         while (pause_flag) {
             printf("Thread paused...\n");
             pthread_cond_wait(&cond, &mutex);  // 会释放 mutex 并等待 cond 被 signal
         }
         pthread_mutex_unlock(&mutex);
 
-
         // 播放音频
-        int ret = fread(buff, 1, buffer_size, fp);
-		
-		if(ret == 0){ // 读取到文件末尾
+        int read_bytes = fread(buff, 1, buffer_size, fp);
+
+        if(read_bytes == 0){ // 读取到文件末尾
             pthread_mutex_lock(&mutex);
             finish_flag = true;
             pthread_mutex_unlock(&mutex);
-			break;
-		}
-		
-		if(ret < 0){
-			printf("\n文件读取错误: %s \n", strerror(errno));
+            break;
+        }
+        if(read_bytes < 0){
+            printf("\n文件读取错误: %s \n", strerror(errno));
             pthread_mutex_lock(&mutex);
             error_flag = true;
             pthread_mutex_unlock(&mutex);
-			break;
-		}
+            break;
+        }
 
-		// 向PCM设备写入数据,
-		while((ret = snd_pcm_writei(pcm_handle, buff, frames)) < 0){
-			if (ret == -EPIPE){
-
-				/* EPIPE means underrun -32  的错误就是缓存中的数据不够 */
-				printf("\nunderrun occurred -32, err_info = %s \n", snd_strerror(ret));
-				//完成硬件参数设置，使设备准备好
-				snd_pcm_prepare(pcm_handle);
-			
-            } else if(ret < 0){
-
-                //TODO
-				printf("\nret value is : %d \n", ret);
-				printf("\nwrite to audio interface failed: %s \n", snd_strerror(ret));
-
-				pthread_mutex_lock(&mutex);
-                error_flag = true;
+        int written = 0;
+        while (written < read_bytes) {
+            int frames_to_write = (read_bytes - written) / wav_header.block_align;
+            int write_ret = snd_pcm_writei(pcm_handle, buff + written, frames_to_write);
+            if (write_ret < 0) {
+                if (write_ret == -EPIPE) {
+                    printf("\nunderrun occurred -32, err_info = %s \n", snd_strerror(write_ret));
+                    snd_pcm_prepare(pcm_handle);
+                } else {
+                    printf("\nret value is : %d \n", write_ret);
+                    printf("\nwrite to audio interface failed: %s \n", snd_strerror(write_ret));
+                    pthread_mutex_lock(&mutex);
+                    error_flag = true;
+                    pthread_mutex_unlock(&mutex);
+                    break;
+                }
+            } else if (write_ret > 0) {
+                pthread_mutex_lock(&mutex);
+                played_bytes += write_ret * wav_header.block_align;
                 pthread_mutex_unlock(&mutex);
-                break;
-			}
-		}
-
+                written += write_ret * wav_header.block_align;
+            }
+        }
     }
-
+    return NULL;
 }

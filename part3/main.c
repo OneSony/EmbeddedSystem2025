@@ -45,6 +45,12 @@ void handle_sigint(int sig) {
 		control_thread = 0;
 	}
 
+	if (ui_thread != 0) {
+		pthread_cancel(ui_thread);
+		pthread_join(ui_thread, NULL);
+		ui_thread = 0;
+	}
+
     free_pcm_resources();
 	free_mixer_resources();
 
@@ -133,9 +139,13 @@ int main(int argc, char *argv [])
 
 	enable_raw_mode(); // 启用非标准模式
 	pthread_create(&control_thread, NULL, control_thread_func, NULL);
+	pthread_create(&ui_thread, NULL, ui_thread_func, NULL);
 
 	pthread_join(control_thread, NULL); //阻塞等待
+	pthread_cancel(ui_thread);
+	pthread_join(ui_thread, NULL); // 等待UI线程结束
 	control_thread = 0; // 音量控制线程退出
+	ui_thread = 0; // UI线程退出
 	disable_raw_mode(); // 恢复标准模式
 
 	printf("\n结束\n");

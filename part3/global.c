@@ -41,6 +41,9 @@ FILE *fp = NULL;
 
 pthread_t playback_thread = 0;
 pthread_t control_thread = 0; // 播放线程和音量控制线程
+pthread_t ui_thread = 0; // UI线程
+
+long played_bytes = 0; // 已播放的字节数
 
 snd_mixer_t *mixer_handle = NULL;
 snd_mixer_elem_t *elem = NULL;
