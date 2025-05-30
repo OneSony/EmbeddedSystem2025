@@ -137,6 +137,7 @@ void end_playback() {
         pthread_mutex_lock(&mutex);
         exit_flag = true;
         pthread_mutex_unlock(&mutex);
+        pthread_cancel(playback_thread);
         pthread_join(playback_thread, NULL); // 等待播放线程安全退出
         playback_thread = 0; // 重置播放线程
         free_pcm_resources();
