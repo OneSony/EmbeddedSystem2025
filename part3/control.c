@@ -30,6 +30,7 @@ int play_track(int track_index) {
         }
         if (memcmp(chunk_id, "data", 4) == 0) {
             wav_header.sub_chunk2_size = chunk_size; // 正确设置data块长度
+            data_offset_in_file = ftell(fp); // 记录data块的偏移位置
             break;
         } else {
             // 跳过这个chunk的数据
@@ -329,6 +330,24 @@ void *control_thread_func(void *arg) {
                 pause_flag = false;
                 play_track(track_index);
                 //printf("\n当前曲目: %s\n", wav_files[track_index]);
+            } else if (input == 'f') { // 快进10秒
+                pthread_mutex_lock(&mutex);
+                long forward_bytes = 10 * wav_header.byte_rate;
+                long target = played_bytes + forward_bytes;
+                if (target > wav_header.sub_chunk2_size)
+                    target = wav_header.sub_chunk2_size;
+                played_bytes = target;
+                fseek(fp, data_offset_in_file + played_bytes, SEEK_SET); // 跳转文件指针
+                pthread_mutex_unlock(&mutex);
+            } else if (input == 'r') { // 快退10秒
+                pthread_mutex_lock(&mutex);
+                long rewind_bytes = 10 * wav_header.byte_rate;
+                long target = played_bytes - rewind_bytes;
+                if (target < 0)
+                    target = 0;
+                played_bytes = target;
+                fseek(fp, data_offset_in_file + played_bytes, SEEK_SET); // 跳转文件指针
+                pthread_mutex_unlock(&mutex);
             }
         } else {
             continue; // 没有输入则继续循环

@@ -117,3 +117,5 @@ extern bool finish_flag; // 播放完成标志
 extern bool error_flag; // 错误标志
 extern pthread_mutex_t mutex;
 extern pthread_cond_t cond;
+
+extern long data_offset_in_file; // data块在文件中的偏移量
