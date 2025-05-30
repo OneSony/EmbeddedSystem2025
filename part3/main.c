@@ -11,11 +11,15 @@ int load_wav_files_from_dir(const char *dir_path) {
     DIR *dir = opendir(dir_path);
     if (!dir) {
         printf("无法打开目录: %s\n", dir_path);
-        return 1;
+        return -1;
     }
     struct dirent *entry;
     wav_file_count = 0;
     while ((entry = readdir(dir)) != NULL) {
+		if (strlen(dir_path) + 1 + strlen(entry->d_name) + 1 > MAX_FILENAME_LEN) {
+			printf("文件路径过长: %s/%s\n", dir_path, entry->d_name);
+			return -1;
+		}
         int len = strlen(entry->d_name);
         if (len > 4 && strcmp(entry->d_name + len - 4, ".wav") == 0) {
             if (wav_file_count < MAX_WAV_FILES) {
@@ -114,13 +118,13 @@ int main(int argc, char *argv [])
 				struct stat st;
 				if (stat(optarg, &st) == 0 && S_ISDIR(st.st_mode)) {
 					if (load_wav_files_from_dir(optarg) != 0 || wav_file_count == 0) {
-						printf("目录下没有wav文件\n");
+						//printf("目录下没有wav文件\n");
 						return 0;
 					}
-					printf("目录下wav文件:\n");
+					/*printf("目录下wav文件:\n");
 					for (int i = 0; i < wav_file_count; ++i) {
 						printf("%s\n", wav_files[i]);
-					}
+					}*/
 
 				} else {
 					// 把这首加到list
