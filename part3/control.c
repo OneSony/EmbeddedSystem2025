@@ -12,8 +12,31 @@ int play_track(int track_index) {
 		return -1;
 	}
 
-	// 读取文件头
-	fread(&wav_header, sizeof(struct WAV_HEADER), 1, fp);
+	// 只读取到bits_per_sample为止
+	size_t header_basic_size = offsetof(struct WAV_HEADER, sub_chunk2_id);
+    fread(&wav_header, header_basic_size, 1, fp);
+    
+    // 跳过非data块，找到data块
+    char chunk_id[4];
+    int chunk_size;
+    while (1) {
+        if (fread(chunk_id, 1, 4, fp) != 4) {
+            printf("未找到data块\n");
+            return -1;
+        }
+        if (fread(&chunk_size, 4, 1, fp) != 1) {
+            printf("读取chunk大小失败\n");
+            return -1;
+        }
+        if (memcmp(chunk_id, "data", 4) == 0) {
+            wav_header.sub_chunk2_size = chunk_size; // 正确设置data块长度
+            break;
+        } else {
+            // 跳过这个chunk的数据
+            fseek(fp, chunk_size, SEEK_CUR);
+        }
+    }
+
 
     rate = wav_header.sample_rate;
 

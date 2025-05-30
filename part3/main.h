@@ -10,6 +10,7 @@
 #include <alsa/asoundlib.h>
 #include <termios.h>
 #include <signal.h>
+#include <stddef.h>
 
 #define MAX_WAV_FILES 256
 #define MAX_FILENAME_LEN 256
