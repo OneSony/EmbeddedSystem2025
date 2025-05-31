@@ -1,6 +1,9 @@
 #include "main.h"
 
 int play_track(int track_index) {
+    pthread_mutex_lock(&mutex);
+    exit_flag = false; // 重置退出标志
+    pthread_mutex_unlock(&mutex);
     if (track_index < 0 || track_index >= wav_file_count) {
         printf("无效的曲目索引\n");
         return -1;
@@ -15,6 +18,11 @@ int play_track(int track_index) {
 	// 只读取到bits_per_sample为止
 	size_t header_basic_size = offsetof(struct WAV_HEADER, sub_chunk2_id);
     fread(&wav_header, header_basic_size, 1, fp);
+
+    if (wav_header.audio_format != 1) { // 1表示PCM格式
+	    printf("不支持的音频格式: %d\n", wav_header.audio_format);
+	    return 0;
+	}
     
     // 跳过非data块，找到data块
     char chunk_id[4];
@@ -90,6 +98,17 @@ int play_track(int track_index) {
         return -1;
     }
 
+    ws_cfg.frame_size   = (int)(wav_header.sample_rate * 0.03f);
+    ws_cfg.overlap_size = ws_cfg.frame_size / 2;
+    ws_cfg.speed_ratio  = 1;  // 初始播放速率
+    if (wsola_state_init(&ws_state,
+                         &ws_cfg,
+                         wav_header.num_channels,
+                         wav_header.bits_per_sample) != 0) {
+        fprintf(stderr, "WSOLA 初始化失败\n");
+        return 1;
+    }
+
     // 初始化
 	if(init_pcm() != 0){
 		printf("初始化PCM失败\n"); // PCM内部的资源已经释放
@@ -128,6 +147,7 @@ int play_track(int track_index) {
 
     pthread_create(&playback_thread, NULL, playback_thread_func, NULL);
 
+    return 0;
 }
 
 void end_playback() {
@@ -293,30 +313,13 @@ void *control_thread_func(void *arg) {
                 pthread_mutex_lock(&mutex);
                 pause_flag = !pause_flag;
                 //printf("\n%s\n", pause_flag ? "已暂停" : "已恢复");
-                if(playback_thread != 0) {
-                    if (pause_flag) {
-                        // 先暂停声卡
-                        if (snd_pcm_pause(pcm_handle, 1) < 0) {
-                            printf("\n声卡不支持无缝暂停\n");
-                        }
-                    } else {
-                        // 先恢复声卡
-                        if (snd_pcm_pause(pcm_handle, 0) < 0) {
-                            printf("\n声卡不支持无缝暂停\n");
-                        }
-                        pthread_cond_signal(&cond); // 唤醒播放线程
-                    }
-                }
                 pthread_mutex_unlock(&mutex);
             } else if (input == 'n') { // 'n' 键切换到下一曲目
                 //printf("\n切换到下一曲目...\n");
-
                 end_playback(); // 结束当前播放
 
                 // 切换到下一曲目
                 track_index = (track_index + 1) % wav_file_count;
-                exit_flag = false;
-                pause_flag = false;
                 play_track(track_index);
                 //printf("\n当前曲目: %s\n", wav_files[track_index]);
                 
@@ -326,8 +329,6 @@ void *control_thread_func(void *arg) {
 
                 // 切换到上一曲目
                 track_index = (track_index - 1 + wav_file_count) % wav_file_count;
-                exit_flag = false;
-                pause_flag = false;
                 play_track(track_index);
                 //printf("\n当前曲目: %s\n", wav_files[track_index]);
             } else if (input == 'f') { // 快进10秒
@@ -347,6 +348,19 @@ void *control_thread_func(void *arg) {
                     target = 0;
                 played_bytes = target;
                 fseek(fp, data_offset_in_file + played_bytes, SEEK_SET); // 跳转文件指针
+                pthread_mutex_unlock(&mutex);
+            } else if (input == 's') { // 's' 键切换倍速
+                pthread_mutex_lock(&mutex);
+                if (playback_speed == 0.5) {
+                    playback_speed = 1.0;
+                } else if (playback_speed == 1.0) {
+                    playback_speed = 1.5;
+                } else if (playback_speed == 1.5) {
+                    playback_speed = 2.0;
+                } else {
+                    playback_speed = 0.5;
+                }
+                //printf("\n当前播放速度: %fx\n", playback_speed);
                 pthread_mutex_unlock(&mutex);
             }
         } else {

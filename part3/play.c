@@ -72,7 +72,7 @@ int init_pcm() {
     }
 
     buffer_size = period_size * periods;
-    buff = (unsigned char *)malloc(buffer_size);
+    buff = (unsigned char *)malloc(buffer_size * 2);
     if (!buff) {
         printf("分配缓冲区失败\n");
         free_pcm_resources();
@@ -119,66 +119,90 @@ int init_pcm() {
 
 
 void *playback_thread_func(void *arg) {
+    int bytes_per_frame = wav_header.num_channels * wav_header.bits_per_sample / 8;
+    int frame_per_buffer = buffer_size / bytes_per_frame;
+    fseek(fp, sizeof(struct WAV_HEADER), SEEK_SET); // 跳过WAV头
 
-    // 初始化播放参数
+    // 清空缓冲区，避免开头杂音
+    memset(buff, 0, buffer_size * 2);
     pthread_mutex_lock(&mutex);
     played_bytes = 0;
     pthread_mutex_unlock(&mutex);
-
-    while(1){ // 播放线程循环
-
+    while (1) { // 播放线程循环
         // 检查标志
         pthread_mutex_lock(&mutex);
         if (exit_flag) {
             pthread_mutex_unlock(&mutex);
+            // 清空缓冲区，避免结尾杂音
+            memset(buff, 0, buffer_size * 2);
+            snd_pcm_drain(pcm_handle); // 确保缓冲区数据播放完毕
             break; // 退出线程
         }
-        while (pause_flag) {
-            printf("Thread paused...\n");
-            pthread_cond_wait(&cond, &mutex);  // 会释放 mutex 并等待 cond 被 signal
+        if (pause_flag) {
+            pthread_mutex_unlock(&mutex);
+            usleep(10000); // 暂停时休眠，避免CPU占用过高
+            continue; // 继续循环等待
         }
+        ws_state.config.speed_ratio = playback_speed; // 更新WSOLA速度
         pthread_mutex_unlock(&mutex);
 
         // 播放音频
         int read_bytes = fread(buff, 1, buffer_size, fp);
 
-        if(read_bytes == 0){ // 读取到文件末尾
+        // 只写入完整帧，丢弃不足一帧的数据
+        int in_frames = read_bytes / bytes_per_frame;
+        if (in_frames <= 0) {
+            // 文件结束或不足一帧，自动循环播放
+            fseek(fp, sizeof(struct WAV_HEADER), SEEK_SET);
+            memset(buff, 0, buffer_size * 2); // 清空缓冲区，防止残留杂音
             pthread_mutex_lock(&mutex);
-            finish_flag = true;
+            played_bytes = 0;
             pthread_mutex_unlock(&mutex);
-            break;
+            continue;
         }
-        if(read_bytes < 0){
-            printf("\n文件读取错误: %s \n", strerror(errno));
-            pthread_mutex_lock(&mutex);
-            error_flag = true;
-            pthread_mutex_unlock(&mutex);
-            break;
+
+        int out_frames = wsola_state_process(&ws_state, buff, in_frames, buff, frame_per_buffer * 2);
+        
+        if (out_frames > frame_per_buffer * 2) {
+            out_frames = frame_per_buffer; // 截断输出帧数
         }
 
         int written = 0;
-        while (written < read_bytes) {
-            int frames_to_write = (read_bytes - written) / wav_header.block_align;
-            int write_ret = snd_pcm_writei(pcm_handle, buff + written, frames_to_write);
-            if (write_ret < 0) {
-                if (write_ret == -EPIPE) {
-                    printf("\nunderrun occurred -32, err_info = %s \n", snd_strerror(write_ret));
+        while (written < out_frames) {
+            int ret = snd_pcm_writei(pcm_handle, buff + written * bytes_per_frame, out_frames - written);
+            if (ret < 0) {
+                if (ret == -EPIPE) {
+                    printf("\nunderrun occurred -32, err_info = %s \n", snd_strerror(ret));
                     snd_pcm_prepare(pcm_handle);
                 } else {
-                    printf("\nret value is : %d \n", write_ret);
-                    printf("\nwrite to audio interface failed: %s \n", snd_strerror(write_ret));
-                    pthread_mutex_lock(&mutex);
-                    error_flag = true;
-                    pthread_mutex_unlock(&mutex);
-                    break;
+                    printf("\nret value is : %d \n", ret);
+                    printf("\nwrite to audio interface failed: %s \n", snd_strerror(ret));
+                    if (control_thread != 0) {
+                        pthread_cancel(control_thread);
+                        pthread_join(control_thread, NULL);
+                        control_thread = 0;
+                        printf("音量控制线程已取消并退出。\n");
+                    }
+                    free_pcm_resources();
+                    free_mixer_resources();
+                    if (fp != NULL) {
+                        fclose(fp);
+                        fp = NULL;
+                        printf("音频文件已关闭。\n");
+                    }
+                    disable_raw_mode();
+                    printf("终端模式已恢复。\n");
+                    exit(EXIT_FAILURE);
                 }
-            } else if (write_ret > 0) {
-                pthread_mutex_lock(&mutex);
-                played_bytes += write_ret * wav_header.block_align;
-                pthread_mutex_unlock(&mutex);
-                written += write_ret * wav_header.block_align;
+            } else {
+                written += ret;
             }
         }
+
+        // 更新已播放字节数
+        pthread_mutex_lock(&mutex);
+        played_bytes += read_bytes;
+        pthread_mutex_unlock(&mutex);
     }
     return NULL;
 }

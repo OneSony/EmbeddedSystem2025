@@ -11,6 +11,7 @@
 #include <termios.h>
 #include <signal.h>
 #include <stddef.h>
+#include "wsola.h"
 
 #define MAX_WAV_FILES 256
 #define MAX_FILENAME_LEN 256
@@ -66,7 +67,6 @@ extern snd_pcm_format_t pcm_format;
 //char buf[BUF_LEN];
 extern unsigned char *buff;
 
-
 // 周期数
 extern int periods;
 // 一个周期的大小，这里虽然是设置的字节大小，但是在有时候需要将此大小转换为帧，所以在用的时候要换算成帧数大小才可以
@@ -117,5 +117,8 @@ extern bool finish_flag; // 播放完成标志
 extern bool error_flag; // 错误标志
 extern pthread_mutex_t mutex;
 extern pthread_cond_t cond;
+extern float playback_speed; // 播放速度
 
 extern long data_offset_in_file; // data块在文件中的偏移量
+extern WsolaConfig ws_cfg;
+extern WsolaState ws_state; // Wsola状态

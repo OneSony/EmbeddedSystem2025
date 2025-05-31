@@ -58,5 +58,8 @@ bool pause_flag = false; // 暂停标志
 bool exit_flag = false; // 退出标志
 bool finish_flag = false; // 播放完成标志
 bool error_flag = false; // 错误标志
+float playback_speed = 1.0;
 
 long data_offset_in_file = 0; // data块在文件中的偏移量
+WsolaConfig ws_cfg;
+WsolaState ws_state; // Wsola状态
