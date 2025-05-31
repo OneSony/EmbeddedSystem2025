@@ -11,6 +11,8 @@
 #include <termios.h>
 #include <signal.h>
 #include <stddef.h>
+#include <errno.h>
+#include "log.h"
 
 #define MAX_WAV_FILES 256
 #define MAX_FILENAME_LEN 256
