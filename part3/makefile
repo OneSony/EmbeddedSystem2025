@@ -1,6 +1,6 @@
 CC = gcc
-LDFLAGS = -lasound -lpthread
-SRCS = main.c play.c control.c ui.c global.c
+LDFLAGS = -lasound -lpthread -lm
+SRCS = main.c play.c control.c ui.c global.c equalizer.c
 TARGET = music_app
 
 all:
