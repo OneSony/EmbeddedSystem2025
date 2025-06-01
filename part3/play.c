@@ -25,6 +25,8 @@ void free_pcm_resources() {
         snd_pcm_close(pcm_handle);
         pcm_handle = NULL;
     }
+
+    wsola_state_free(&ws_state);
 }
 
 int init_pcm() {
@@ -72,7 +74,7 @@ int init_pcm() {
     }
 
     buffer_size = period_size * periods;
-    buff = (unsigned char *)malloc(buffer_size * 2);
+    buff = (unsigned char *)malloc(buffer_size * MAX_SPEED);
     if (!buff) {
         printf("分配缓冲区失败\n");
         free_pcm_resources();
@@ -124,45 +126,51 @@ void *playback_thread_func(void *arg) {
     fseek(fp, sizeof(struct WAV_HEADER), SEEK_SET); // 跳过WAV头
 
     // 清空缓冲区，避免开头杂音
-    memset(buff, 0, buffer_size * 2);
+    memset(buff, 0, buffer_size * MAX_SPEED);
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
     pthread_mutex_lock(&mutex);
     played_bytes = 0;
     pthread_mutex_unlock(&mutex);
+    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
+
     while (1) { // 播放线程循环
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
+
         // 检查标志
         pthread_mutex_lock(&mutex);
         if (exit_flag) {
             pthread_mutex_unlock(&mutex);
             // 清空缓冲区，避免结尾杂音
-            memset(buff, 0, buffer_size * 2);
+            memset(buff, 0, buffer_size * MAX_SPEED);
             snd_pcm_drain(pcm_handle); // 确保缓冲区数据播放完毕
             break; // 退出线程
         }
         if (pause_flag) {
             pthread_mutex_unlock(&mutex);
-            usleep(10000); // 暂停时休眠，避免CPU占用过高
             continue; // 继续循环等待
         }
         ws_state.config.speed_ratio = playback_speed; // 更新WSOLA速度
+        float loacl_speed = playback_speed;
         pthread_mutex_unlock(&mutex);
 
-        // 播放音频
-        int read_bytes = fread(buff, 1, buffer_size, fp);
+        // 动态调整读取长度：倍速时多读
+        int read_size = (int)(buffer_size * loacl_speed);
+        if (read_size > buffer_size * 2) read_size = buffer_size * 2; // 防止越界
+
+        int read_bytes = fread(buff, 1, read_size, fp);
 
         // 只写入完整帧，丢弃不足一帧的数据
         int in_frames = read_bytes / bytes_per_frame;
         if (in_frames <= 0) {
-            // 文件结束或不足一帧，自动循环播放
-            fseek(fp, sizeof(struct WAV_HEADER), SEEK_SET);
-            memset(buff, 0, buffer_size * 2); // 清空缓冲区，防止残留杂音
+            // 切下一首
             pthread_mutex_lock(&mutex);
-            played_bytes = 0;
+            finish_flag = true;
             pthread_mutex_unlock(&mutex);
-            continue;
+            break;
         }
 
         int out_frames = wsola_state_process(&ws_state, buff, in_frames, buff, frame_per_buffer * 2);
-        
+
         if (out_frames > frame_per_buffer * 2) {
             out_frames = frame_per_buffer; // 截断输出帧数
         }
@@ -177,22 +185,12 @@ void *playback_thread_func(void *arg) {
                 } else {
                     printf("\nret value is : %d \n", ret);
                     printf("\nwrite to audio interface failed: %s \n", snd_strerror(ret));
-                    if (control_thread != 0) {
-                        pthread_cancel(control_thread);
-                        pthread_join(control_thread, NULL);
-                        control_thread = 0;
-                        printf("音量控制线程已取消并退出。\n");
-                    }
-                    free_pcm_resources();
-                    free_mixer_resources();
-                    if (fp != NULL) {
-                        fclose(fp);
-                        fp = NULL;
-                        printf("音频文件已关闭。\n");
-                    }
-                    disable_raw_mode();
-                    printf("终端模式已恢复。\n");
-                    exit(EXIT_FAILURE);
+
+                    //TODO
+                    pthread_mutex_lock(&mutex);
+                    error_flag = true;
+                    pthread_mutex_unlock(&mutex);
+                    break;
                 }
             } else {
                 written += ret;
@@ -203,6 +201,8 @@ void *playback_thread_func(void *arg) {
         pthread_mutex_lock(&mutex);
         played_bytes += read_bytes;
         pthread_mutex_unlock(&mutex);
+
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
     }
     return NULL;
 }

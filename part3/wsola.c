@@ -164,6 +164,12 @@ int wsola_state_process(WsolaState *st,
 
 // 释放
 void wsola_state_free(WsolaState *st) {
-    free(st->curr_frame);
-    free(st->prev_frame);
+    if (st->curr_frame != NULL) {
+        free(st->curr_frame);
+        st->curr_frame = NULL;
+    }
+    if (st->prev_frame != NULL) {
+        free(st->prev_frame);
+        st->prev_frame = NULL;
+    }
 }

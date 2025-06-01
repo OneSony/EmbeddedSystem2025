@@ -100,7 +100,7 @@ int play_track(int track_index) {
 
     ws_cfg.frame_size   = (int)(wav_header.sample_rate * 0.03f);
     ws_cfg.overlap_size = ws_cfg.frame_size / 2;
-    ws_cfg.speed_ratio  = 1;  // 初始播放速率
+    ws_cfg.speed_ratio  = playback_speed;  // 初始播放速率
     if (wsola_state_init(&ws_state,
                          &ws_cfg,
                          wav_header.num_channels,
@@ -250,8 +250,7 @@ void *control_thread_func(void *arg) {
 
         if(finish_flag) {
             //printf("\n当前曲目播放完毕\n");
-            pthread_join(playback_thread, NULL); // 等待播放线程安全退出
-            playback_thread = 0; // 重置播放线程
+            end_playback();
             finish_flag = false; // 重置播放完成标志
             // 切换到下一曲目
             track_index = (track_index + 1) % wav_file_count;

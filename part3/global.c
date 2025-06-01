@@ -62,4 +62,4 @@ float playback_speed = 1.0;
 
 long data_offset_in_file = 0; // data块在文件中的偏移量
 WsolaConfig ws_cfg;
-WsolaState ws_state; // Wsola状态
+WsolaState ws_state = {0}; // Wsola状态

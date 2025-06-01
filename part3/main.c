@@ -144,7 +144,6 @@ int main(int argc, char *argv [])
 	pthread_join(control_thread, NULL); //阻塞等待
 	pthread_cancel(ui_thread);
 	pthread_join(ui_thread, NULL); // 等待UI线程结束
-	wsola_state_free(&ws_state);
 	control_thread = 0; // 音量控制线程退出
 	ui_thread = 0; // UI线程退出
 	disable_raw_mode(); // 恢复标准模式

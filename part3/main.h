@@ -15,6 +15,7 @@
 
 #define MAX_WAV_FILES 256
 #define MAX_FILENAME_LEN 256
+#define MAX_SPEED 4.0f
 
 
 // 定义音乐全局结构体，参考 https://www.cnblogs.com/ranson7zop/p/7657874.html 表3
