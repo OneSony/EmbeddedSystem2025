@@ -351,7 +351,7 @@ void *control_thread_func(void *arg) {
             } else if (input == 'e') { // 'e' 键切换均衡器开关
                 equalizer.enabled = !equalizer.enabled;
                 //printf("\n均衡器: %s\n", equalizer.enabled ? "开启" : "关闭");
-            } else if (input >= '0' && input <= '2') { // 数字键0-2切换均衡器预设
+            } else if (input >= '0' && input <= '3') { // 数字键0-3切换均衡器预设
                 eq_preset_t preset = (eq_preset_t)(input - '0');
                 if (preset < EQ_NUM_PRESETS) {
                     equalizer_set_preset(&equalizer, preset);

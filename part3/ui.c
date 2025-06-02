@@ -9,6 +9,7 @@ const char* get_preset_name(eq_preset_t preset) {
         case EQ_PRESET_FLAT: return "Flat";
         case EQ_PRESET_BASS_BOOST: return "Bass Boost";
         case EQ_PRESET_TREBLE_BOOST: return "Treble Boost";
+        case EQ_PRESET_VOICE_BOOST: return "Voice Boost";
         default: return "Unknown";
     }
 }
@@ -55,7 +56,7 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_fi
     
     printf("\nControls:\n");
     printf("[n] Next  [b] Prev  [f] Forward  [r] Rewind  [p] Pause  [q] Quit\n");
-    printf("[e] Toggle EQ  [0] Flat  [1] Bass  [2] Treble\n");
+    printf("[e] Toggle EQ  [0] Flat  [1] Bass  [2] Treble  [3] Voice\n");
     fflush(stdout);
 }
 

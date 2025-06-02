@@ -35,6 +35,7 @@ typedef enum {
     EQ_PRESET_FLAT = 0,         // 平衡模式
     EQ_PRESET_BASS_BOOST,       // 低音增强
     EQ_PRESET_TREBLE_BOOST,     // 高音增强
+    EQ_PRESET_VOICE_BOOST,      // 人声增强
     EQ_NUM_PRESETS
 } eq_preset_t;
 
