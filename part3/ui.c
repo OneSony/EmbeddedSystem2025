@@ -4,6 +4,7 @@
 #include <pthread.h>
 
 // 绘制UI函数
+
 void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_file_count, char **wav_files, int pause_flag) {
     printf("\033[H"); // 只移动光标到左上角，不清屏
 
@@ -30,6 +31,8 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_fi
 
     // 播放/暂停状态
     printf("Status:   [%s]\n", pause_flag ? "Paused" : "Playing");
+    // 播放速率
+    printf("Speed:    [%.1fx]\n", playback_speed);
 
     // 曲目列表
     printf("Tracklist:\n");
@@ -37,7 +40,7 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_fi
         if (i == track_index) printf(" > %s\n", wav_files[i]);
         else printf("   %s\n", wav_files[i]);
     }
-    printf("\n[n] Next  [b] Prev  [f] Forward  [r] Rewind  [p] Pause  [q] Quit\n");
+    printf("\n[n] Next  [b] Prev  [f] Forward  [r] Rewind  [s] Speed  [p] Pause/Resume [q] Quit\n");
     fflush(stdout);
 }
 
@@ -53,7 +56,8 @@ void *ui_thread_func(void *arg) {
         }
 
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
-        draw_ui(cur_sec, total_sec, current_volume, track_index, wav_file_count, wav_files, pause_flag);
+        draw_ui(cur_sec, total_sec, current_volume, track_index,
+                wav_file_count, wav_files, playback_speed);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
         pthread_mutex_unlock(&mutex);

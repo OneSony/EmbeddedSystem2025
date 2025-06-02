@@ -13,7 +13,7 @@ unsigned int rate;
 unsigned char *buff = NULL;
 
 // 周期数
-int periods = 2;
+int periods = 4;
 // 一个周期的大小，这里虽然是设置的字节大小，但是在有时候需要将此大小转换为帧，所以在用的时候要换算成帧数大小才可以
 snd_pcm_uframes_t period_size = 12 * 1024;
 snd_pcm_uframes_t frames;
@@ -58,5 +58,8 @@ bool pause_flag = false; // 暂停标志
 bool exit_flag = false; // 退出标志
 bool finish_flag = false; // 播放完成标志
 bool error_flag = false; // 错误标志
+float playback_speed = 1.0;
 
 long data_offset_in_file = 0; // data块在文件中的偏移量
+WsolaConfig ws_cfg;
+WsolaState ws_state = {0}; // Wsola状态
