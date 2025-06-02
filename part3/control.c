@@ -297,6 +297,8 @@ void *control_thread_func(void *arg) {
             if (input == '\033') { // 检测到转义序列
                 getchar();         // 跳过 '['
                 input = getchar(); // 获取方向键
+
+                pthread_mutex_lock(&mutex);
                 if (input == 'D') { // 左方向键
                     if (current_volume > min_volume) {
                         current_volume -= 5; // 减小音量
@@ -315,6 +317,7 @@ void *control_thread_func(void *arg) {
 
                 if (current_volume < min_volume) current_volume = min_volume;
                 if (current_volume > max_volume) current_volume = max_volume;
+                pthread_mutex_unlock(&mutex);
 
                 pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
                 long min, max;
@@ -334,6 +337,7 @@ void *control_thread_func(void *arg) {
             } else if (input == 'p') { // 'p' 键暂停
                 pthread_mutex_lock(&mutex);
                 pause_flag = !pause_flag;
+                pthread_mutex_unlock(&mutex);
                 //printf("\n%s\n", pause_flag ? "已暂停" : "已恢复");
                 LOG_USER("用户操作: %s", pause_flag ? "暂停播放" : "恢复播放");
                 if(playback_thread != 0) {
@@ -356,7 +360,6 @@ void *control_thread_func(void *arg) {
                         pthread_cond_signal(&cond); // 唤醒播放线程
                     }
                 }
-                pthread_mutex_unlock(&mutex);
             } else if (input == 'n') { // 'n' 键切换到下一曲目
                 //printf("\n切换到下一曲目...\n");
                 LOG_USER("用户操作: 切换到下一曲目");
