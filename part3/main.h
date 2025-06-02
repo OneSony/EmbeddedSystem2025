@@ -18,7 +18,7 @@
 
 // 均衡器相关定义
 #define NUM_EQ_BANDS 5           // 均衡器频段数
-#define FIR_FILTER_ORDER 64      // FIR滤波器阶数
+#define FIR_FILTER_ORDER 16      // FIR滤波器阶数
 #define MAX_BUFFER_SIZE 4096     // 最大缓冲区大小
 
 // 均衡器频段定义
