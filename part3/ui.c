@@ -3,6 +3,17 @@
 #include <unistd.h>
 #include <pthread.h>
 
+// 获取均衡器预设名称
+const char* get_preset_name(eq_preset_t preset) {
+    switch (preset) {
+        case EQ_PRESET_FLAT: return "Flat";
+        case EQ_PRESET_BASS_BOOST: return "Bass Boost";
+        case EQ_PRESET_TREBLE_BOOST: return "Treble Boost";
+        case EQ_PRESET_VOICE_BOOST: return "Voice Boost";
+        default: return "Unknown";
+    }
+}
+
 // 绘制UI函数
 
 void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_file_count, char **wav_files, int pause_flag, float playback_speed) {
@@ -34,13 +45,21 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_fi
     // 播放速率
     printf("Speed:    [%.1fx]\n", playback_speed);
 
+    // 均衡器状态
+    printf("Equalizer: [%s] - %s\n", 
+           equalizer.enabled ? "ON " : "OFF", 
+           get_preset_name(equalizer.current_preset));
+
     // 曲目列表
     printf("Tracklist:\n");
     for (int i = 0; i < wav_file_count; ++i) {
         if (i == track_index) printf(" > %s\n", wav_files[i]);
         else printf("   %s\n", wav_files[i]);
     }
-    printf("\n[n] Next  [b] Prev  [f] Forward  [r] Rewind  [s] Speed  [p] Pause/Resume [q] Quit\n");
+    
+    printf("\nControls:\n");
+    printf("[n] Next  [b] Prev  [f] Forward  [r] Rewind  [s] Speed  [p] Pause/Resume  [q] Quit\n");
+    printf("[e] Toggle EQ  [0] Flat  [1] Bass  [2] Treble  [3] Voice\n");
     fflush(stdout);
 }
 

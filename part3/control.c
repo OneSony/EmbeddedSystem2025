@@ -403,7 +403,7 @@ void *control_thread_func(void *arg) {
                 fseek(fp, data_offset_in_file + played_bytes, SEEK_SET); // 跳转文件指针
                 pthread_mutex_unlock(&mutex);
                 LOG_INFO("快退操作完成");
-            } else if (input == 's') { // 's' 键切换倍速
+             } else if (input == 's') { // 's' 键切换倍速
                 pthread_mutex_lock(&mutex);
                 if (playback_speed == 0.5) {
                     playback_speed = 1.0;
@@ -416,6 +416,15 @@ void *control_thread_func(void *arg) {
                 }
                 //printf("\n当前播放速度: %fx\n", playback_speed);
                 pthread_mutex_unlock(&mutex);
+            } else if (input == 'e') { // 'e' 键切换均衡器开关
+                equalizer.enabled = !equalizer.enabled;
+                //printf("\n均衡器: %s\n", equalizer.enabled ? "开启" : "关闭");
+            } else if (input >= '0' && input <= '3') { // 数字键0-3切换均衡器预设
+                eq_preset_t preset = (eq_preset_t)(input - '0');
+                if (preset < EQ_NUM_PRESETS) {
+                    equalizer_set_preset(&equalizer, preset);
+                    //printf("\n切换到均衡器预设: %d\n", preset);
+                }
             }
         } else {
             continue; // 没有输入则继续循环

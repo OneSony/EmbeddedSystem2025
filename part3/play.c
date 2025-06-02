@@ -126,6 +126,9 @@ int init_pcm() {
         return 1;
     }
 
+    // 初始化均衡器
+    equalizer_init(&equalizer, wav_header.sample_rate);
+    
 	free(pcm_name);
     pcm_name = NULL;
     snd_pcm_hw_params_free(hw_params); // 释放 hw_params
@@ -203,6 +206,12 @@ void *playback_thread_func(void *arg) {
 
         if (out_frames > frame_per_buffer * 2) {
             out_frames = frame_per_buffer; // 截断输出帧数
+        }
+
+        // 对音频数据应用均衡器处理（仅支持16位音频）
+        if (wav_header.bits_per_sample == 16 && equalizer.enabled) {
+            int num_samples = read_bytes / wav_header.block_align;
+            equalizer_process_audio(&equalizer, (int16_t *)buff, num_samples, wav_header.num_channels);
         }
 
         int written = 0;

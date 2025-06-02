@@ -39,6 +39,9 @@ int wav_header_size;
 // 音乐文件指针变量
 FILE *fp = NULL;
 
+// 均衡器全局变量
+audio_equalizer_t equalizer;
+
 pthread_t playback_thread = 0;
 pthread_t control_thread = 0; // 播放线程和音量控制线程
 pthread_t ui_thread = 0; // UI线程
