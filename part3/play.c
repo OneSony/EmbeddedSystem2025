@@ -153,7 +153,6 @@ void *playback_thread_func(void *arg) {
 
 
     while (1) { // 播放线程循环
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
 
         // 检查标志
         pthread_mutex_lock(&mutex);
@@ -226,7 +225,6 @@ void *playback_thread_func(void *arg) {
         played_bytes += read_bytes;
         pthread_mutex_unlock(&mutex);
 
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
     }
     LOG_INFO("播放线程结束");
     return NULL;
