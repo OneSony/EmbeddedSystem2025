@@ -272,28 +272,17 @@ void *control_thread_func(void *arg) {
             //printf("\n当前曲目播放完毕\n");
             end_playback();
             LOG_INFO("当前曲目播放完毕");
-            end_playback();
 
             finish_flag = false; // 重置播放完成标志
             // 切换到下一曲目
+            exit_flag = false;
+            pause_flag = false;
             track_index = (track_index + 1) % wav_file_count;
             play_track(track_index);
             //printf("当前曲目: %s\n", wav_files[track_index]);
             LOG_INFO("自动切换到下一曲目: %s", wav_files[track_index]);
         }
 
-
-        // 显示音量进度条
-        /*printf("\r音量: [");
-        for (int i = 0; i < max_volume / 2; i++) {
-            if (i < current_volume / 2) {
-                printf("#"); // 填充的部分
-            } else {
-                printf(" "); // 未填充的部分
-            }
-        }
-        printf("] %3ld%%", current_volume);
-		fflush(stdout);*/
 
         // 捕获用户输入
         char input = 0;
@@ -374,6 +363,8 @@ void *control_thread_func(void *arg) {
                 end_playback(); // 结束当前播放
 
                 // 切换到下一曲目
+                exit_flag = false;
+                pause_flag = false;
                 track_index = (track_index + 1) % wav_file_count;
                 play_track(track_index);
                 //printf("\n当前曲目: %s\n", wav_files[track_index]);
@@ -384,6 +375,8 @@ void *control_thread_func(void *arg) {
                 end_playback(); // 结束当前播放
 
                 // 切换到上一曲目
+                exit_flag = false;
+                pause_flag = false;
                 track_index = (track_index - 1 + wav_file_count) % wav_file_count;
                 play_track(track_index);
                 //printf("\n当前曲目: %s\n", wav_files[track_index]);

@@ -5,7 +5,7 @@
 
 // 绘制UI函数
 
-void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_file_count, char **wav_files, int pause_flag) {
+void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_file_count, char **wav_files, int pause_flag, float playback_speed) {
     printf("\033[H"); // 只移动光标到左上角，不清屏
 
     // 统一进度条和音量条长度
@@ -57,7 +57,7 @@ void *ui_thread_func(void *arg) {
 
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
         draw_ui(cur_sec, total_sec, current_volume, track_index,
-                wav_file_count, wav_files, playback_speed);
+                wav_file_count, wav_files, pause_flag, playback_speed);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
         pthread_mutex_unlock(&mutex);

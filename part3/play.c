@@ -202,12 +202,12 @@ void *playback_thread_func(void *arg) {
             if (ret < 0) {
                 if (ret == -EPIPE) {
                     //printf("\nunderrun occurred -32, err_info = %s \n", snd_strerror(ret));
-                    LOG_WARNING("发生underrun: %s", snd_strerror(write_ret));
+                    LOG_WARNING("发生underrun: %s", snd_strerror(ret));
                     snd_pcm_prepare(pcm_handle);
                 } else {
                     //printf("\nret value is : %d \n", ret);
                     //printf("\nwrite to audio interface failed: %s \n", snd_strerror(ret));
-                    LOG_ERROR("写入音频接口失败: 返回值=%d, 错误=%s", write_ret, snd_strerror(write_ret));
+                    LOG_ERROR("写入音频接口失败: 返回值=%d, 错误=%s", ret, snd_strerror(ret));
 
                     //TODO
 
