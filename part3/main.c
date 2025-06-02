@@ -74,6 +74,8 @@ void handle_sigint(int sig) {
     // 关闭日志系统
     close_logger();
 
+	printf("\033[H\033[J"); // 清屏并移动光标到左上角
+
     // 退出程序
     exit(0);
 }
