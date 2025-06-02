@@ -165,21 +165,21 @@ int play_track(int track_index) {
 
 void end_playback() {
 
-    if(playback_thread == 0) {
-
-    }else{
+    if(playback_thread != 0) {
         pthread_mutex_lock(&mutex);
         exit_flag = true;
         pthread_mutex_unlock(&mutex);
+        pthread_cond_broadcast(&cond); // 唤醒播放线程，防止其卡在等待
         pthread_cancel(playback_thread);
         pthread_join(playback_thread, NULL); // 等待播放线程安全退出
         playback_thread = 0; // 重置播放线程
-        free_pcm_resources();
-        free_mixer_resources();
-        if (fp != NULL) {
-            fclose(fp);
-            fp = NULL;
-        }
+    }
+
+    free_pcm_resources();
+    free_mixer_resources();
+    if (fp != NULL) {
+        fclose(fp);
+        fp = NULL;
     }
 }
 
@@ -421,7 +421,7 @@ void *control_thread_func(void *arg) {
             continue; // 没有输入则继续循环
         }
         
-
+        usleep(100000); // 100ms, 防止过于频繁的操作
     }
 
     return NULL;

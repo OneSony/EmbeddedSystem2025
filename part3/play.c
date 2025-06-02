@@ -137,13 +137,15 @@ int init_pcm() {
 
 
 void *playback_thread_func(void *arg) {
+
     int bytes_per_frame = wav_header.num_channels * wav_header.bits_per_sample / 8;
     int frame_per_buffer = buffer_size / bytes_per_frame;
-    fseek(fp, sizeof(struct WAV_HEADER), SEEK_SET); // 跳过WAV头
 
+
+    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
+    fseek(fp, sizeof(struct WAV_HEADER), SEEK_SET); // 跳过WAV头
     // 清空缓冲区，避免开头杂音
     memset(buff, 0, buffer_size * MAX_SPEED);
-    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
     pthread_mutex_lock(&mutex);
     played_bytes = 0;
     pthread_mutex_unlock(&mutex);
@@ -155,6 +157,7 @@ void *playback_thread_func(void *arg) {
     while (1) { // 播放线程循环
 
         // 检查标志
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
         pthread_mutex_lock(&mutex);
         if (exit_flag) {
             pthread_mutex_unlock(&mutex);
@@ -171,6 +174,7 @@ void *playback_thread_func(void *arg) {
         ws_state.config.speed_ratio = playback_speed; // 更新WSOLA速度
         float local_speed = playback_speed;
         pthread_mutex_unlock(&mutex);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
 
         // 动态调整读取长度：倍速时多读
         int read_size = (int)(buffer_size * local_speed);
@@ -180,16 +184,22 @@ void *playback_thread_func(void *arg) {
 
         // 只写入完整帧，丢弃不足一帧的数据
         int in_frames = read_bytes / bytes_per_frame;
+
         if (in_frames <= 0) {
             // 切下一首
+            pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
             pthread_mutex_lock(&mutex);
             finish_flag = true;
             pthread_mutex_unlock(&mutex);
+            pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
             LOG_INFO("文件播放完毕");
             break;
         }
 
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
         int out_frames = wsola_state_process(&ws_state, buff, in_frames, buff, frame_per_buffer * 2);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
+
 
         if (out_frames > frame_per_buffer * 2) {
             out_frames = frame_per_buffer; // 截断输出帧数
@@ -197,22 +207,29 @@ void *playback_thread_func(void *arg) {
 
         int written = 0;
         while (written < out_frames) {
+            pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
             int ret = snd_pcm_writei(pcm_handle, buff + written * bytes_per_frame, out_frames - written);
+            pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
+
             if (ret < 0) {
                 if (ret == -EPIPE) {
                     //printf("\nunderrun occurred -32, err_info = %s \n", snd_strerror(ret));
                     LOG_WARNING("发生underrun: %s", snd_strerror(ret));
+                    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
                     snd_pcm_prepare(pcm_handle);
+                    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
+
                 } else {
                     //printf("\nret value is : %d \n", ret);
                     //printf("\nwrite to audio interface failed: %s \n", snd_strerror(ret));
                     LOG_ERROR("写入音频接口失败: 返回值=%d, 错误=%s", ret, snd_strerror(ret));
 
                     //TODO
-
+                    pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
                     pthread_mutex_lock(&mutex);
                     error_flag = true;
                     pthread_mutex_unlock(&mutex);
+                    pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
                     break;
                 }
             } else {
@@ -221,9 +238,11 @@ void *playback_thread_func(void *arg) {
         }
 
         // 更新已播放字节数
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
         pthread_mutex_lock(&mutex);
         played_bytes += read_bytes;
         pthread_mutex_unlock(&mutex);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
 
     }
     LOG_INFO("播放线程结束");
