@@ -5,23 +5,11 @@ static const double eq_presets[EQ_NUM_PRESETS][NUM_EQ_BANDS] = {
     // FLAT - 所有频段增益为0
     {0.0, 0.0, 0.0, 0.0, 0.0},
     
-    // BASS_BOOST - 增强低音
-    {6.0, 3.0, 0.0, -1.0, -2.0},
+    // BASS_BOOST - 强烈增强低音，压制高音
+    {16.0, 8.0, 0.0, -8.0, -16.0},
     
-    // TREBLE_BOOST - 增强高音
-    {-2.0, -1.0, 0.0, 3.0, 6.0},
-    
-    // VOCAL - 人声增强，突出中频
-    {-2.0, -1.0, 4.0, 3.0, -1.0},
-    
-    // CLASSICAL - 古典音乐，增强低音和高音
-    {3.0, 1.0, -1.0, 1.0, 4.0},
-    
-    // ROCK - 摇滚音乐，V型曲线
-    {4.0, 1.0, -2.0, 1.0, 5.0},
-    
-    // POP - 流行音乐，增强低音和高音，轻微压制中音
-    {2.0, 1.0, -0.5, 2.0, 3.0}
+    // TREBLE_BOOST - 强烈增强高音，压制低音
+    {-16.0, -8.0, 0.0, 8.0, 16.0}
 };
 
 // 各频段的中心频率和带宽
@@ -185,15 +173,6 @@ void equalizer_set_preset(audio_equalizer_t *eq, eq_preset_t preset) {
         eq->gains[i] = eq_presets[preset][i];
         eq->bands[i].gain = pow(10.0, eq->gains[i] / 20.0);
     }
-}
-
-// 设置单个频段增益
-void equalizer_set_band_gain(audio_equalizer_t *eq, eq_band_t band, double gain_db) {
-    if (band >= NUM_EQ_BANDS) return;
-    
-    eq->gains[band] = gain_db;
-    eq->bands[band].gain = pow(10.0, gain_db / 20.0);
-    eq->current_preset = EQ_NUM_PRESETS; // 标记为自定义设置
 }
 
 // 处理音频数据

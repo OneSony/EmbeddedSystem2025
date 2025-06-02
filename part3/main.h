@@ -32,13 +32,9 @@ typedef enum {
 
 // 均衡器预设模式
 typedef enum {
-    EQ_PRESET_FLAT = 0,     // 平衡模式
-    EQ_PRESET_BASS_BOOST,   // 低音增强
-    EQ_PRESET_TREBLE_BOOST, // 高音增强
-    EQ_PRESET_VOCAL,        // 人声增强
-    EQ_PRESET_CLASSICAL,    // 古典音乐
-    EQ_PRESET_ROCK,         // 摇滚音乐
-    EQ_PRESET_POP,          // 流行音乐
+    EQ_PRESET_FLAT = 0,         // 平衡模式
+    EQ_PRESET_BASS_BOOST,       // 低音增强
+    EQ_PRESET_TREBLE_BOOST,     // 高音增强
     EQ_NUM_PRESETS
 } eq_preset_t;
 
@@ -147,7 +143,6 @@ void free_mixer_resources();
 // 均衡器函数声明
 void equalizer_init(audio_equalizer_t *eq, int sample_rate);
 void equalizer_set_preset(audio_equalizer_t *eq, eq_preset_t preset);
-void equalizer_set_band_gain(audio_equalizer_t *eq, eq_band_t band, double gain_db);
 void equalizer_process_audio(audio_equalizer_t *eq, int16_t *audio_data, int num_samples, int channels);
 void equalizer_cleanup(audio_equalizer_t *eq);
 void fir_filter_init(fir_filter_t *filter, double center_freq, double gain_db, int sample_rate, int order);

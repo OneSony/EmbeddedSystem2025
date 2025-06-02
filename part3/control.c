@@ -351,42 +351,12 @@ void *control_thread_func(void *arg) {
             } else if (input == 'e') { // 'e' 键切换均衡器开关
                 equalizer.enabled = !equalizer.enabled;
                 //printf("\n均衡器: %s\n", equalizer.enabled ? "开启" : "关闭");
-            } else if (input >= '0' && input <= '6') { // 数字键0-6切换均衡器预设
+            } else if (input >= '0' && input <= '2') { // 数字键0-2切换均衡器预设
                 eq_preset_t preset = (eq_preset_t)(input - '0');
                 if (preset < EQ_NUM_PRESETS) {
                     equalizer_set_preset(&equalizer, preset);
                     //printf("\n切换到均衡器预设: %d\n", preset);
                 }
-            } else if (input == 'z') { // 'z' 键增强低音频段
-                equalizer_set_band_gain(&equalizer, EQ_BASS, equalizer.gains[EQ_BASS] + 1.0);
-                //printf("\n低音增益: %.1f dB\n", equalizer.gains[EQ_BASS]);
-            } else if (input == 'Z') { // Shift+Z，降低低音频段
-                equalizer_set_band_gain(&equalizer, EQ_BASS, equalizer.gains[EQ_BASS] - 1.0);
-                //printf("\n低音增益: %.1f dB\n", equalizer.gains[EQ_BASS]);
-            } else if (input == 'x') { // 'x' 键增强低中音频段
-                equalizer_set_band_gain(&equalizer, EQ_LOW_MID, equalizer.gains[EQ_LOW_MID] + 1.0);
-                //printf("\n低中音增益: %.1f dB\n", equalizer.gains[EQ_LOW_MID]);
-            } else if (input == 'X') { // Shift+X，降低低中音频段
-                equalizer_set_band_gain(&equalizer, EQ_LOW_MID, equalizer.gains[EQ_LOW_MID] - 1.0);
-                //printf("\n低中音增益: %.1f dB\n", equalizer.gains[EQ_LOW_MID]);
-            } else if (input == 'c') { // 'c' 键增强中音频段
-                equalizer_set_band_gain(&equalizer, EQ_MID, equalizer.gains[EQ_MID] + 1.0);
-                //printf("\n中音增益: %.1f dB\n", equalizer.gains[EQ_MID]);
-            } else if (input == 'C') { // Shift+C，降低中音频段
-                equalizer_set_band_gain(&equalizer, EQ_MID, equalizer.gains[EQ_MID] - 1.0);
-                //printf("\n中音增益: %.1f dB\n", equalizer.gains[EQ_MID]);
-            } else if (input == 'v') { // 'v' 键增强高中音频段
-                equalizer_set_band_gain(&equalizer, EQ_HIGH_MID, equalizer.gains[EQ_HIGH_MID] + 1.0);
-                //printf("\n高中音增益: %.1f dB\n", equalizer.gains[EQ_HIGH_MID]);
-            } else if (input == 'V') { // Shift+V，降低高中音频段
-                equalizer_set_band_gain(&equalizer, EQ_HIGH_MID, equalizer.gains[EQ_HIGH_MID] - 1.0);
-                //printf("\n高中音增益: %.1f dB\n", equalizer.gains[EQ_HIGH_MID]);
-            } else if (input == 'g') { // 'g' 键增强高音频段
-                equalizer_set_band_gain(&equalizer, EQ_TREBLE, equalizer.gains[EQ_TREBLE] + 1.0);
-                //printf("\n高音增益: %.1f dB\n", equalizer.gains[EQ_TREBLE]);
-            } else if (input == 'G') { // Shift+G，降低高音频段
-                equalizer_set_band_gain(&equalizer, EQ_TREBLE, equalizer.gains[EQ_TREBLE] - 1.0);
-                //printf("\n高音增益: %.1f dB\n", equalizer.gains[EQ_TREBLE]);
             }
         } else {
             continue; // 没有输入则继续循环
