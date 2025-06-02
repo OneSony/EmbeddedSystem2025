@@ -4,9 +4,9 @@
 #include <pthread.h>
 
 // 绘制UI函数
-void draw_ui(int cur_sec, int total_sec, int volume, int track_index,
-             int wav_file_count, char **wav_files, float playback_speed) {
-    printf("\033[H\033[J"); // 清屏并移动光标到左上角
+
+void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_file_count, char **wav_files, int pause_flag) {
+    printf("\033[H"); // 只移动光标到左上角，不清屏
 
     // 统一进度条和音量条长度
     int bar_len = 40;
