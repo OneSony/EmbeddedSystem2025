@@ -124,6 +124,8 @@ int main(int argc, char *argv [])
 	int ret;
 	bool flag = true;
 
+	printf("\033[H\033[J"); // 清屏并移动光标到左上角
+
 	// 分析文件
 	while((ret = getopt(argc,argv,"m:")) != -1){
 		flag = false;
@@ -178,6 +180,8 @@ int main(int argc, char *argv [])
 	printf("\n结束\n");
 	LOG_INFO("音乐播放器程序正常结束");
 	close_logger();
+
+	printf("\033[H\033[J"); // 清屏并移动光标到左上角
 	
 	signal(SIGINT, SIG_DFL);
 	return 0;
