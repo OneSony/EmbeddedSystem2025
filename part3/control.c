@@ -170,7 +170,7 @@ void end_playback() {
         exit_flag = true;
         pthread_mutex_unlock(&mutex);
         pthread_cond_broadcast(&cond); // 唤醒播放线程，防止其卡在等待
-        pthread_cancel(playback_thread);
+        //pthread_cancel(playback_thread);
         pthread_join(playback_thread, NULL); // 等待播放线程安全退出
         playback_thread = 0; // 重置播放线程
     }
@@ -267,6 +267,12 @@ void *control_thread_func(void *arg) {
 
 
     while (1) {
+
+        if(control_end_flag) {
+            //printf("\n控制线程结束\n");
+            LOG_INFO("控制线程结束");
+            break; // 退出控制线程
+        }
 
         if(finish_flag) {
             //printf("\n当前曲目播放完毕\n");

@@ -172,6 +172,7 @@ extern bool pause_flag; // 暂停标志
 extern bool exit_flag; // 退出标志
 extern bool finish_flag; // 播放完成标志
 extern bool error_flag; // 错误标志
+extern bool control_end_flag; // 控制线程结束标志
 extern pthread_mutex_t mutex;
 extern pthread_cond_t cond;
 extern float playback_speed; // 播放速度

@@ -162,19 +162,19 @@ void *playback_thread_func(void *arg) {
         // 检查标志
         pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
         pthread_mutex_lock(&mutex);
+        while (pause_flag && !exit_flag) {
+            LOG_INFO("播放线程暂停");
+            pthread_cond_wait(&cond, &mutex);
+        }
         if (exit_flag) {
             pthread_mutex_unlock(&mutex);
             // 清空缓冲区，避免结尾杂音
             memset(buff, 0, buffer_size * MAX_SPEED);
-            snd_pcm_drain(pcm_handle); // 确保缓冲区数据播放完毕
+            snd_pcm_drain(pcm_handle);
             LOG_INFO("收到退出标志，播放线程退出");
-            break; // 退出线程
+            break;
         }
-        if (pause_flag) {
-            LOG_INFO("播放线程暂停");
-            pthread_cond_wait(&cond, &mutex);  // 会释放 mutex 并等待 cond 被 signal
-        }
-        ws_state.config.speed_ratio = playback_speed; // 更新WSOLA速度
+        ws_state.config.speed_ratio = playback_speed;
         float local_speed = playback_speed;
         pthread_mutex_unlock(&mutex);
         pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断

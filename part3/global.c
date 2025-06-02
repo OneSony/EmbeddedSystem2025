@@ -61,6 +61,7 @@ bool pause_flag = false; // 暂停标志
 bool exit_flag = false; // 退出标志
 bool finish_flag = false; // 播放完成标志
 bool error_flag = false; // 错误标志
+bool control_end_flag = false; // 控制线程结束标志
 float playback_speed = 1.0;
 
 long data_offset_in_file = 0; // data块在文件中的偏移量

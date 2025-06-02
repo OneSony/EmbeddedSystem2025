@@ -42,13 +42,20 @@ void handle_sigint(int sig) {
     LOG_INFO("收到退出信号，正在退出程序");
 
 	if (playback_thread != 0) {
-		pthread_cancel(playback_thread);
+		pthread_mutex_lock(&mutex);
+        exit_flag = true;
+        pthread_mutex_unlock(&mutex);
+        pthread_cond_broadcast(&cond); // 唤醒播放线程，防止其卡在等待
+		//pthread_cancel(playback_thread);
 		pthread_join(playback_thread, NULL);
 		playback_thread = 0;
 	}
 
 	if (control_thread != 0) {
-		pthread_cancel(control_thread);
+		pthread_mutex_lock(&mutex);
+        control_end_flag = true;
+        pthread_mutex_unlock(&mutex);
+		//pthread_cancel(control_thread);
 		pthread_join(control_thread, NULL);
 		control_thread = 0;
 	}

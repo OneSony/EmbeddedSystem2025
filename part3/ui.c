@@ -65,6 +65,7 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_fi
 
 void *ui_thread_func(void *arg) {
     while (1) {
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
         pthread_mutex_lock(&mutex);
 
         // 计算当前播放秒数
@@ -74,12 +75,11 @@ void *ui_thread_func(void *arg) {
             total_sec = wav_header.sub_chunk2_size / wav_header.byte_rate;
         }
 
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
         draw_ui(cur_sec, total_sec, current_volume, track_index,
                 wav_file_count, wav_files, pause_flag, playback_speed);
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
 
         pthread_mutex_unlock(&mutex);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         usleep(200000); //0.2秒更新一次UI
     }
     return NULL;
