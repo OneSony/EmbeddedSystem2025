@@ -11,6 +11,7 @@ int load_wav_files_from_dir(const char *dir_path) {
     DIR *dir = opendir(dir_path);
     if (!dir) {
         printf("无法打开目录: %s\n", dir_path);
+        LOG_ERROR("无法打开目录: %s", dir_path);
         return -1;
     }
     struct dirent *entry;
@@ -18,6 +19,7 @@ int load_wav_files_from_dir(const char *dir_path) {
     while ((entry = readdir(dir)) != NULL) {
 		if (strlen(dir_path) + 1 + strlen(entry->d_name) + 1 > MAX_FILENAME_LEN) {
 			printf("文件路径过长: %s/%s\n", dir_path, entry->d_name);
+			LOG_ERROR("文件路径过长: %s/%s", dir_path, entry->d_name);
 			return -1;
 		}
         int len = strlen(entry->d_name);
@@ -30,12 +32,14 @@ int load_wav_files_from_dir(const char *dir_path) {
         }
     }
     closedir(dir);
+    LOG_INFO("从目录 %s 加载了 %d 个WAV文件", dir_path, wav_file_count);
     return 0;
 }
 
 // 自定义信号处理函数
 void handle_sigint(int sig) {
     printf("\n正在退出...\n");
+    LOG_INFO("收到退出信号，正在退出程序");
 
 	if (playback_thread != 0) {
 		pthread_cancel(playback_thread);
@@ -66,6 +70,9 @@ void handle_sigint(int sig) {
 
     // 恢复终端模式
     disable_raw_mode();
+
+    // 关闭日志系统
+    close_logger();
 
     // 退出程序
     exit(0);
@@ -104,6 +111,14 @@ void disable_raw_mode() {
 
 int main(int argc, char *argv [])
 {	
+    // 初始化日志系统
+    if (init_logger("music_player.log") != 0) {
+        printf("初始化日志系统失败\n");
+        return -1;
+    }
+    
+    LOG_INFO("音乐播放器程序启动");
+    
 	signal(SIGINT, handle_sigint);
 
 	int ret;
@@ -119,6 +134,8 @@ int main(int argc, char *argv [])
 				if (stat(optarg, &st) == 0 && S_ISDIR(st.st_mode)) {
 					if (load_wav_files_from_dir(optarg) != 0 || wav_file_count == 0) {
 						//printf("目录下没有wav文件\n");
+						LOG_ERROR("目录下没有wav文件或加载失败");
+						close_logger();
 						return 0;
 					}
 					/*printf("目录下wav文件:\n");
@@ -132,8 +149,11 @@ int main(int argc, char *argv [])
 						wav_files[wav_file_count] = malloc(MAX_FILENAME_LEN);
 						snprintf(wav_files[wav_file_count], MAX_FILENAME_LEN, "%s", optarg);
 						wav_file_count++;
+						LOG_INFO("添加音频文件: %s", optarg);
 					} else {
 						printf("wav文件数量超过限制\n");
+						LOG_ERROR("wav文件数量超过限制");
+						close_logger();
 						return 0;
 					}
 				}
@@ -142,6 +162,8 @@ int main(int argc, char *argv [])
 	}
 
 	enable_raw_mode(); // 启用非标准模式
+	LOG_INFO("启用终端原始模式");
+	
 	pthread_create(&control_thread, NULL, control_thread_func, NULL);
 	pthread_create(&ui_thread, NULL, ui_thread_func, NULL);
 
@@ -151,8 +173,11 @@ int main(int argc, char *argv [])
 	control_thread = 0; // 音量控制线程退出
 	ui_thread = 0; // UI线程退出
 	disable_raw_mode(); // 恢复标准模式
+	LOG_INFO("恢复终端标准模式");
 
 	printf("\n结束\n");
+	LOG_INFO("音乐播放器程序正常结束");
+	close_logger();
 	
 	signal(SIGINT, SIG_DFL);
 	return 0;
