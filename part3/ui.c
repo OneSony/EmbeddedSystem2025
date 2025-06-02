@@ -29,7 +29,7 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_fi
         if (i < pos) printf("#");
         else printf(" ");
     }
-    printf("] %d/%d sec\n", cur_sec, total_sec);
+    printf("] %d/%d sec          \n", cur_sec, total_sec);
 
     // 音量条
     printf("Volume:   [");
@@ -41,12 +41,12 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_fi
     printf("] %3d%%\n", volume);
 
     // 播放/暂停状态
-    printf("Status:   [%s]\n", pause_flag ? "Paused" : "Playing");
+    printf("Status:   [%s]\n", pause_flag ? "Paused " : "Playing");
     // 播放速率
     printf("Speed:    [%.1fx]\n", playback_speed);
 
     // 均衡器状态
-    printf("Equalizer: [%s] - %s\n", 
+    printf("Equalizer: [%s] - %-12s\n", 
            equalizer.enabled ? "ON " : "OFF", 
            get_preset_name(equalizer.current_preset));
 
