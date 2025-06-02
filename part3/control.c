@@ -420,8 +420,6 @@ void *control_thread_func(void *arg) {
         } else {
             continue; // 没有输入则继续循环
         }
-        
-        usleep(100000); // 100ms, 防止过于频繁的操作
     }
 
     return NULL;
