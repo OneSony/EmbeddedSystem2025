@@ -104,7 +104,8 @@ int play_track(int track_index) {
     if (wsola_state_init(&ws_state,
                          &ws_cfg,
                          wav_header.num_channels,
-                         wav_header.bits_per_sample) != 0) {
+                         wav_header.bits_per_sample,
+                         periods * period_size / (wav_header.num_channels * wav_header.bits_per_sample / 8)) != 0) {
         fprintf(stderr, "WSOLA 初始化失败\n");
         return 1;
     }

@@ -150,12 +150,12 @@ void *playback_thread_func(void *arg) {
             continue; // 继续循环等待
         }
         ws_state.config.speed_ratio = playback_speed; // 更新WSOLA速度
-        float loacl_speed = playback_speed;
+        float local_speed = playback_speed;
         pthread_mutex_unlock(&mutex);
 
         // 动态调整读取长度：倍速时多读
-        int read_size = (int)(buffer_size * loacl_speed);
-        if (read_size > buffer_size * 2) read_size = buffer_size * 2; // 防止越界
+        int read_size = (int)(buffer_size * local_speed);
+        if (read_size > buffer_size * MAX_SPEED) read_size = buffer_size * MAX_SPEED; // 防止越界
 
         int read_bytes = fread(buff, 1, read_size, fp);
 

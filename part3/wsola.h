@@ -16,6 +16,8 @@ typedef struct {
     int byte_per_sample;
     float *curr_frame;
     float *prev_frame;
+    int fout_size; // fout的大小
+    float *fout;
     int input_idx;
     int output_idx;
 } WsolaState;
@@ -24,7 +26,8 @@ typedef struct {
 int wsola_state_init(WsolaState *st,
                      WsolaConfig *cfg,
                      int num_channels,
-                     int bits_per_sample);
+                     int bits_per_sample,
+                     int max_out_frames);
 // 实时处理PCM帧并输出变速后帧
 int wsola_state_process(WsolaState *st,
                         const unsigned char *in_bytes,
