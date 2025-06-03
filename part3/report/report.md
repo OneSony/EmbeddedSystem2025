@@ -146,9 +146,18 @@ TODO
 
 TODO
 
-### TODO
-
-TODO
+### 条件变量唤醒
+在播放线程中用如下结构实现音乐暂停时播放线程的挂起.
+```c
+// play.c
+pthread_mutex_lock(&mutex);
+while (pause_flag && !exit_flag) {
+    LOG_INFO("播放线程暂停");
+    pthread_cond_wait(&cond, &mutex);
+}
+```
+其中`pause_flag`作为全局变量, 用作控制线程和播放线程的通讯. 在读取和修改全局变量时, 必须获取`mutex`锁保证线程安全. `cond`作为条件变量, 仅仅用于唤醒等待`cond`变量的线程.
+当播放线程获取`mutex`并进入while循环后, 在`pthread_cond_wait`中会释放`mutex`并等待`cond`条件. 当播放恢复, 控制线程修改`pause_flag`并通过`cond`唤醒播放线程. 此时播放线程会重新获取`mutex`锁, 并在while循环中互斥访问全局变量, 进而退出while循环继续执行播放指令.
 
 ## wav文件来源
 https://samplelib.com/zh/sample-wav.html
