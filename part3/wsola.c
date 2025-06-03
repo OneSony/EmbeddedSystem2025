@@ -46,7 +46,26 @@ static void write_sample(unsigned char *data, float sample, int bits, int channe
 static int find_best_offset(const float *curr, const float *prev, int frame_size, int overlap_size) {
     int best_offset = 0;
     float max_corr = -INFINITY;
-    for (int offset = 0; offset < overlap_size; offset++) {
+    int coarse_step = 8;
+    int coarse_limit = overlap_size - coarse_step;
+    // 粗步长搜索
+    for (int offset = 0; offset < coarse_limit; offset += coarse_step) {
+        float corr = 0.0f;
+        for (int i = 0; i < overlap_size; i += coarse_step) {
+            corr += curr[i] * prev[i + offset];
+        }
+        if (corr > max_corr) {
+            max_corr = corr;
+            best_offset = offset;
+        }
+    }
+    // 精细搜索
+    int start = best_offset - coarse_step;
+    if (start < 0) start = 0;
+    int end = best_offset + coarse_step;
+    if (end > overlap_size - 1) end = overlap_size - 1;
+    max_corr = -INFINITY;
+    for (int offset = start; offset <= end; offset++) {
         float corr = 0.0f;
         for (int i = 0; i < overlap_size; i++) {
             corr += curr[i] * prev[i + offset];
@@ -63,7 +82,8 @@ static int find_best_offset(const float *curr, const float *prev, int frame_size
 int wsola_state_init(WsolaState *st,
                      WsolaConfig *cfg,
                      int num_channels,
-                     int bits_per_sample)
+                     int bits_per_sample,
+                     int max_out_frames)
 {
     *st = (WsolaState){ .config = *cfg,
                         .num_channels = num_channels,
@@ -73,6 +93,8 @@ int wsola_state_init(WsolaState *st,
                         .output_idx = 0 };
     st->curr_frame = malloc(cfg->frame_size * num_channels * sizeof(float));
     st->prev_frame = malloc(cfg->frame_size * num_channels * sizeof(float));
+    st->fout_size = max_out_frames * num_channels;
+    st->fout = malloc(st->fout_size * sizeof(float));
     if (!st->curr_frame || !st->prev_frame) return -1;
     // 先填一个全零的“前一帧”
     memset(st->prev_frame, 0, cfg->frame_size * num_channels * sizeof(float));
@@ -101,8 +123,16 @@ int wsola_state_process(WsolaState *st,
     int chunk = st->config.frame_size - st->config.overlap_size;
     //fprintf(stderr, "WSOLA process in_frames=%d, chunk=%d, max_out_frames=%d\n",
     //    in_frames, chunk, max_out_frames);
-    // 清浮点输出缓冲
-    float *fout = calloc(max_out_frames * nc, sizeof(float));
+    if (max_out_frames * nc > st->fout_size) {
+        // 需要重新分配更大的 fout
+        float *new_fout = realloc(st->fout, max_out_frames * nc * sizeof(float));
+        if (!new_fout) {
+            fprintf(stderr, "WSOLA: fout realloc failed\n");
+            return 0;
+        }
+        st->fout = new_fout;
+        st->fout_size = max_out_frames * nc;
+    }
     int out_written = 0;
 
     // 将 in_bytes 拆成浮点帧，迭代处理
@@ -124,16 +154,38 @@ int wsola_state_process(WsolaState *st,
                                       st->config.frame_size,
                                       st->config.overlap_size);
         int ostart = (int)(st->output_idx / st->config.speed_ratio);
-        for (int c = 0; c < nc; c++)
-            for (int i = 0; i < chunk; i++) {
-                int op = (ostart + i)*nc + c;
-                if (op >= max_out_frames*nc) continue;
-                int cp = i*nc + c;
-                int pp = (offset + i)*nc + c;
-                fout[op] += st->curr_frame[cp];
-                if (ostart >= st->config.overlap_size)
-                    fout[op] += st->prev_frame[pp];
+        for (int c = 0; c < nc; c++) {
+            int i = 0;
+            // 展开循环，每次处理4个采样，提升效率
+            for (; i + 3 < chunk; i += 4) {
+                int op0 = (ostart + i) * nc + c;
+                int op1 = (ostart + i + 1) * nc + c;
+                int op2 = (ostart + i + 2) * nc + c;
+                int op3 = (ostart + i + 3) * nc + c;
+                int cp0 = i * nc + c;
+                int cp1 = (i + 1) * nc + c;
+                int cp2 = (i + 2) * nc + c;
+                int cp3 = (i + 3) * nc + c;
+                int pp0 = (offset + i) * nc + c;
+                int pp1 = (offset + i + 1) * nc + c;
+                int pp2 = (offset + i + 2) * nc + c;
+                int pp3 = (offset + i + 3) * nc + c;
+                if (op0 < max_out_frames * nc) st->fout[op0] = st->curr_frame[cp0] + ((ostart >= st->config.overlap_size) ? st->prev_frame[pp0] : 0);
+                if (op1 < max_out_frames * nc) st->fout[op1] = st->curr_frame[cp1] + ((ostart >= st->config.overlap_size) ? st->prev_frame[pp1] : 0);
+                if (op2 < max_out_frames * nc) st->fout[op2] = st->curr_frame[cp2] + ((ostart >= st->config.overlap_size) ? st->prev_frame[pp2] : 0);
+                if (op3 < max_out_frames * nc) st->fout[op3] = st->curr_frame[cp3] + ((ostart >= st->config.overlap_size) ? st->prev_frame[pp3] : 0);
             }
+            // 处理剩余不足4个的采样
+            for (; i < chunk; i++) {
+                int op = (ostart + i) * nc + c;
+                if (op >= max_out_frames * nc) continue;
+                int cp = i * nc + c;
+                int pp = (offset + i) * nc + c;
+                st->fout[op] = st->curr_frame[cp];
+                if (ostart >= st->config.overlap_size)
+                    st->fout[op] += st->prev_frame[pp];
+            }
+        }
         // 3) 更新状态
         memcpy(st->prev_frame, st->curr_frame, st->config.frame_size*nc*sizeof(float));
         st->input_idx  += chunk;
@@ -151,9 +203,7 @@ int wsola_state_process(WsolaState *st,
     // 4) 把浮点 f_out 转成 PCM
     for (int f = 0; f < out_written; f++)
         for (int c = 0; c < nc; c++)
-            write_sample(out_bytes, fout[f*nc + c], bps, c, f, nc);
-
-    free(fout);
+            write_sample(out_bytes, st->fout[f*nc + c], bps, c, f, nc);
 
     if (out_written <= 0) {
         fprintf(stderr, "WSOLA: no frames generated, skipping write\n");
@@ -164,6 +214,16 @@ int wsola_state_process(WsolaState *st,
 
 // 释放
 void wsola_state_free(WsolaState *st) {
-    free(st->curr_frame);
-    free(st->prev_frame);
+    if (st->curr_frame) {
+        free(st->curr_frame);
+        st->curr_frame = NULL;
+    }
+    if (st->prev_frame) {
+        free(st->prev_frame);
+        st->prev_frame = NULL;
+    }
+    if (st->fout) {
+        free(st->fout);
+        st->fout = NULL;
+    }
 }

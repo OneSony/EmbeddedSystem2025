@@ -3,10 +3,21 @@
 #include <unistd.h>
 #include <pthread.h>
 
+// 获取均衡器预设名称
+const char* get_preset_name(eq_preset_t preset) {
+    switch (preset) {
+        case EQ_PRESET_FLAT: return "Flat";
+        case EQ_PRESET_BASS_BOOST: return "Bass Boost";
+        case EQ_PRESET_TREBLE_BOOST: return "Treble Boost";
+        case EQ_PRESET_VOICE_BOOST: return "Voice Boost";
+        default: return "Unknown";
+    }
+}
+
 // 绘制UI函数
-void draw_ui(int cur_sec, int total_sec, int volume, int track_index,
-             int wav_file_count, char **wav_files, float playback_speed) {
-    printf("\033[H\033[J"); // 清屏并移动光标到左上角
+
+void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_file_count, char **wav_files, int pause_flag, float playback_speed) {
+    printf("\033[H"); // 只移动光标到左上角，不清屏
 
     // 统一进度条和音量条长度
     int bar_len = 40;
@@ -18,7 +29,7 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index,
         if (i < pos) printf("#");
         else printf(" ");
     }
-    printf("] %d/%d sec\n", cur_sec, total_sec);
+    printf("] %d/%d sec          \n", cur_sec, total_sec);
 
     // 音量条
     printf("Volume:   [");
@@ -30,9 +41,14 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index,
     printf("] %3d%%\n", volume);
 
     // 播放/暂停状态
-    printf("Status:   [%s]\n", pause_flag ? "Paused" : "Playing");
+    printf("Status:   [%s]\n", pause_flag ? "Paused " : "Playing");
     // 播放速率
     printf("Speed:    [%.1fx]\n", playback_speed);
+
+    // 均衡器状态
+    printf("Equalizer: [%s] - %-12s\n", 
+           equalizer.enabled ? "ON " : "OFF", 
+           get_preset_name(equalizer.current_preset));
 
     // 曲目列表
     printf("Tracklist:\n");
@@ -40,12 +56,16 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index,
         if (i == track_index) printf(" > %s\n", wav_files[i]);
         else printf("   %s\n", wav_files[i]);
     }
-    printf("\n[n] Next  [b] Prev  [f] Forward  [r] Rewind  [s] Speed  [p] Pause/Resume [q] Quit\n");
+    
+    printf("\nControls:\n");
+    printf("[n] Next  [b] Prev  [f] Forward  [r] Rewind  [s] Speed  [p] Pause/Resume  [q] Quit\n");
+    printf("[e] Toggle EQ  [0] Flat  [1] Bass  [2] Treble  [3] Voice\n");
     fflush(stdout);
 }
 
 void *ui_thread_func(void *arg) {
     while (1) {
+        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
         pthread_mutex_lock(&mutex);
 
         // 计算当前播放秒数
@@ -55,12 +75,11 @@ void *ui_thread_func(void *arg) {
             total_sec = wav_header.sub_chunk2_size / wav_header.byte_rate;
         }
 
-        pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
         draw_ui(cur_sec, total_sec, current_volume, track_index,
-                wav_file_count, wav_files, playback_speed);
-        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
+                wav_file_count, wav_files, pause_flag, playback_speed);
 
         pthread_mutex_unlock(&mutex);
+        pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
         usleep(200000); //0.2秒更新一次UI
     }
     return NULL;

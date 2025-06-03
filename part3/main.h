@@ -11,11 +11,55 @@
 #include <termios.h>
 #include <signal.h>
 #include <stddef.h>
+#include <math.h>
 #include "wsola.h"
+#include <errno.h>
+#include "log.h"
 
 #define MAX_WAV_FILES 256
 #define MAX_FILENAME_LEN 256
+#define MAX_SPEED 4.0f
 
+// 均衡器相关定义
+#define NUM_EQ_BANDS 5           // 均衡器频段数
+#define FIR_FILTER_ORDER 16      // FIR滤波器阶数
+#define MAX_BUFFER_SIZE 4096     // 最大缓冲区大小
+
+// 均衡器频段定义
+typedef enum {
+    EQ_BASS = 0,       // 低音 (60-250 Hz)
+    EQ_LOW_MID,        // 低中音 (250-500 Hz) 
+    EQ_MID,            // 中音 (500-2000 Hz)
+    EQ_HIGH_MID,       // 高中音 (2000-4000 Hz)
+    EQ_TREBLE          // 高音 (4000-16000 Hz)
+} eq_band_t;
+
+// 均衡器预设模式
+typedef enum {
+    EQ_PRESET_FLAT = 0,         // 平衡模式
+    EQ_PRESET_BASS_BOOST,       // 低音增强
+    EQ_PRESET_TREBLE_BOOST,     // 高音增强
+    EQ_PRESET_VOICE_BOOST,      // 人声增强
+    EQ_NUM_PRESETS
+} eq_preset_t;
+
+// FIR滤波器结构
+typedef struct {
+    double coefficients[FIR_FILTER_ORDER + 1];  // 滤波器系数
+    double delay_line[FIR_FILTER_ORDER + 1];    // 延迟线
+    int order;                                   // 滤波器阶数
+    double center_freq;                          // 中心频率
+    double gain;                                 // 增益
+} fir_filter_t;
+
+// 均衡器结构
+typedef struct {
+    fir_filter_t bands[NUM_EQ_BANDS];           // 各频段的FIR滤波器
+    double gains[NUM_EQ_BANDS];                 // 各频段增益 (dB)
+    eq_preset_t current_preset;                 // 当前预设
+    bool enabled;                               // 均衡器是否启用
+    int sample_rate;                            // 采样率
+} audio_equalizer_t;
 
 // 定义音乐全局结构体，参考 https://www.cnblogs.com/ranson7zop/p/7657874.html 表3
 // int 由uint32_t代替，short 由uint16_t代替，因为在跨平台后有可能不兼容，类型长度不一致，使用统一的类型
@@ -84,6 +128,8 @@ extern unsigned int rate;
 // 音乐文件指针变量
 extern FILE *fp;
 
+// 均衡器全局变量
+extern audio_equalizer_t equalizer;
 
 // 函数声明
 int open_music_file(const char *path_name);
@@ -97,6 +143,17 @@ int init_pcm();
 int init_mixer();
 void free_pcm_resources();
 void free_mixer_resources();
+
+// 均衡器函数声明
+void equalizer_init(audio_equalizer_t *eq, int sample_rate);
+void equalizer_set_preset(audio_equalizer_t *eq, eq_preset_t preset);
+void equalizer_process_audio(audio_equalizer_t *eq, int16_t *audio_data, int num_samples, int channels);
+void equalizer_cleanup(audio_equalizer_t *eq);
+void fir_filter_init(fir_filter_t *filter, double center_freq, double gain_db, int sample_rate, int order);
+double fir_filter_process_sample(fir_filter_t *filter, double input);
+void design_bandpass_filter(double *coefficients, int order, double low_freq, double high_freq, int sample_rate);
+void design_lowpass_filter(double *coefficients, int order, double cutoff_freq, int sample_rate);
+void design_highpass_filter(double *coefficients, int order, double cutoff_freq, int sample_rate);
 
 extern pthread_t playback_thread;
 extern pthread_t control_thread; // 播放线程和音量控制线程
@@ -115,6 +172,7 @@ extern bool pause_flag; // 暂停标志
 extern bool exit_flag; // 退出标志
 extern bool finish_flag; // 播放完成标志
 extern bool error_flag; // 错误标志
+extern bool control_end_flag; // 控制线程结束标志
 extern pthread_mutex_t mutex;
 extern pthread_cond_t cond;
 extern float playback_speed; // 播放速度
