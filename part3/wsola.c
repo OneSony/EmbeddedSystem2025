@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <math.h>
 #include "wsola.h"
+#include "log.h"
 
 // 辅助：PCM 转浮点
 static float read_sample(const unsigned char *data, int bits, int channel, int offset, int num_channels) {
@@ -127,7 +128,7 @@ int wsola_state_process(WsolaState *st,
         // 需要重新分配更大的 fout
         float *new_fout = realloc(st->fout, max_out_frames * nc * sizeof(float));
         if (!new_fout) {
-            fprintf(stderr, "WSOLA: fout realloc failed\n");
+            LOG_ERROR("WSOLA: fout realloc failed");
             return 0;
         }
         st->fout = new_fout;
@@ -195,8 +196,7 @@ int wsola_state_process(WsolaState *st,
 
     // 迭代叠加之后
     if (out_written > max_out_frames) {
-        fprintf(stderr, "WSOLA warning: out_written(%d) > max(%d), clamp\n",
-                out_written, max_out_frames);
+        LOG_WARNING("WSOLA warning: out_written(%d) > max(%d), clamp", out_written, max_out_frames);
         out_written = max_out_frames;
     }
 
@@ -206,7 +206,7 @@ int wsola_state_process(WsolaState *st,
             write_sample(out_bytes, st->fout[f*nc + c], bps, c, f, nc);
 
     if (out_written <= 0) {
-        fprintf(stderr, "WSOLA: no frames generated, skipping write\n");
+        LOG_WARNING("WSOLA: no frames generated, skipping write");
         return 0;
     }
     return out_written;

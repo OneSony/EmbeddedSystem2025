@@ -5,7 +5,6 @@ int play_track(int track_index) {
     exit_flag = false; // 重置退出标志
     pthread_mutex_unlock(&mutex);
     if (track_index < 0 || track_index >= wav_file_count) {
-        printf("无效的曲目索引\n");
         LOG_ERROR("无效的曲目索引: %d", track_index);
         return -1;
     }
@@ -14,7 +13,6 @@ int play_track(int track_index) {
 
     fp = fopen(wav_files[track_index], "rb");
 	if(fp == NULL){
-		printf("打开文件失败: %s \n", strerror(errno));
 		LOG_ERROR("打开文件失败: %s, 错误: %s", wav_files[track_index], strerror(errno));
 		return -1;
 	}
@@ -24,7 +22,7 @@ int play_track(int track_index) {
     fread(&wav_header, header_basic_size, 1, fp);
 
     if (wav_header.audio_format != 1) { // 1表示PCM格式
-	    printf("不支持的音频格式: %d\n", wav_header.audio_format);
+	    LOG_ERROR("不支持的音频格式: %d", wav_header.audio_format);
 	    return 0;
 	}
     
@@ -33,12 +31,10 @@ int play_track(int track_index) {
     int chunk_size;
     while (1) {
         if (fread(chunk_id, 1, 4, fp) != 4) {
-            printf("未找到data块\n");
             LOG_ERROR("未找到data块");
             return -1;
         }
         if (fread(&chunk_size, 4, 1, fp) != 1) {
-            printf("读取chunk大小失败\n");
             LOG_ERROR("读取chunk大小失败");
             return -1;
         }
@@ -61,7 +57,6 @@ int play_track(int track_index) {
     } else if (strncmp(wav_header.chunk_id, "RIFX", 4) == 0) {
         little_endian = false;
     } else {
-        printf("未知文件格式\n");
         LOG_ERROR("未知文件格式");
         return -1;
     }
@@ -80,7 +75,6 @@ int play_track(int track_index) {
             }else if(wav_header.block_align == wav_header.num_channels * 3){
                 pcm_format = SND_PCM_FORMAT_S24_3LE;
             }else{
-                printf("不支持的采样位数: %d\n", wav_header.bits_per_sample);
                 LOG_ERROR("不支持的采样位数: %d", wav_header.bits_per_sample);
                 return -1;
             }
@@ -90,7 +84,6 @@ int play_track(int track_index) {
             }else if(wav_header.block_align == wav_header.num_channels * 3){
                 pcm_format = SND_PCM_FORMAT_S24_3BE;
             }else{
-                printf("不支持的采样位数: %d\n", wav_header.bits_per_sample);
                 LOG_ERROR("不支持的采样位数: %d", wav_header.bits_per_sample);
                 return -1;
             }
@@ -103,7 +96,6 @@ int play_track(int track_index) {
             pcm_format = SND_PCM_FORMAT_S32_BE;
         break;
     default:
-        printf("不支持的采样位数: %d\n", wav_header.bits_per_sample);
         LOG_ERROR("不支持的采样位数: %d", wav_header.bits_per_sample);
         return -1;
     }
@@ -116,13 +108,12 @@ int play_track(int track_index) {
                          wav_header.num_channels,
                          wav_header.bits_per_sample,
                          periods * period_size / (wav_header.num_channels * wav_header.bits_per_sample / 8)) != 0) {
-        fprintf(stderr, "WSOLA 初始化失败\n");
+        LOG_ERROR("WSOLA 初始化失败");
         return 1;
     }
 
     // 初始化
 	if(init_pcm() != 0){
-		printf("初始化PCM失败\n"); // PCM内部的资源已经释放
 		LOG_ERROR("初始化PCM失败");
 		if (fp != NULL) {
             fclose(fp);
@@ -132,7 +123,6 @@ int play_track(int track_index) {
 	}
 
 	if(init_mixer() != 0){
-		printf("初始化混音器失败\n");
 		LOG_ERROR("初始化混音器失败");
         free_pcm_resources();
         if (fp != NULL) {
@@ -200,34 +190,29 @@ void free_mixer_resources() {
 
 int init_mixer() {
     if (snd_mixer_open(&mixer_handle, 0) < 0) {
-        printf("无法打开混音器\n");
         LOG_ERROR("无法打开混音器");
         return 1;
     }
 
     if (snd_mixer_attach(mixer_handle, "default") < 0) {
-        printf("无法附加混音器\n");
         LOG_ERROR("无法附加混音器");
         free_mixer_resources();
         return 1;
     }
 
     if (snd_mixer_selem_register(mixer_handle, NULL, NULL) < 0) {
-        printf("无法注册混音器控件\n");
         LOG_ERROR("无法注册混音器控件");
         free_mixer_resources();
         return 1;
     }
 
     if (snd_mixer_load(mixer_handle) < 0) {
-        printf("无法加载混音器控件\n");
         LOG_ERROR("无法加载混音器控件");
         free_mixer_resources();
         return 1;
     }
 
     if (snd_mixer_selem_id_malloc(&sid) < 0) {
-        printf("无法分配控件 ID\n");
         LOG_ERROR("无法分配控件 ID");
         free_mixer_resources();
         return 1;
@@ -238,7 +223,6 @@ int init_mixer() {
 
     elem = snd_mixer_find_selem(mixer_handle, sid);
     if (!elem) {
-        printf("无法找到 Master 控件\n");
         LOG_ERROR("无法找到 Master 控件");
         free_mixer_resources();
         return 1;
@@ -261,21 +245,21 @@ void *control_thread_func(void *arg) {
     const int max_volume = 100;
     const int min_volume = 0;
 	
-	
-    play_track(track_index); // 播放当前曲目
-    //printf("当前曲目: %s\n", wav_files[track_index]);
+    LOG_INFO("控制线程启动");
+    if (play_track(track_index) != 0) { // 播放当前曲目
+        LOG_ERROR("初始播放曲目失败");
+        return NULL;
+    }
 
 
     while (1) {
 
         if(control_end_flag) {
-            //printf("\n控制线程结束\n");
             LOG_INFO("控制线程结束");
             break; // 退出控制线程
         }
 
         if(finish_flag) {
-            //printf("\n当前曲目播放完毕\n");
             end_playback();
             LOG_INFO("当前曲目播放完毕");
 
@@ -284,9 +268,11 @@ void *control_thread_func(void *arg) {
             exit_flag = false;
             pause_flag = false;
             track_index = (track_index + 1) % wav_file_count;
-            play_track(track_index);
-            //printf("当前曲目: %s\n", wav_files[track_index]);
-            LOG_INFO("自动切换到下一曲目: %s", wav_files[track_index]);
+            if (play_track(track_index) == 0) {
+                LOG_INFO("自动切换到下一曲目: %s", wav_files[track_index]);
+            } else {
+                LOG_ERROR("自动切换曲目失败");
+            }
         }
 
 
@@ -350,7 +336,6 @@ void *control_thread_func(void *arg) {
                     if (pause_flag) {
                         // 先暂停声卡
                         if (snd_pcm_pause(pcm_handle, 1) < 0) {
-                            printf("\n声卡不支持无缝暂停\n");
                             LOG_WARNING("声卡不支持无缝暂停");
                         } else {
                             LOG_INFO("暂停成功");
@@ -358,7 +343,6 @@ void *control_thread_func(void *arg) {
                     } else {
                         // 先恢复声卡
                         if (snd_pcm_pause(pcm_handle, 0) < 0) {
-                            printf("\n声卡不支持无缝暂停\n");
                             LOG_WARNING("声卡不支持无缝恢复");
                         } else {
                             LOG_INFO("恢复播放成功");
@@ -367,7 +351,6 @@ void *control_thread_func(void *arg) {
                     }
                 }
             } else if (input == 'n') { // 'n' 键切换到下一曲目
-                //printf("\n切换到下一曲目...\n");
                 LOG_USER("用户操作: 切换到下一曲目");
                 end_playback(); // 结束当前播放
 
@@ -375,9 +358,11 @@ void *control_thread_func(void *arg) {
                 exit_flag = false;
                 pause_flag = false;
                 track_index = (track_index + 1) % wav_file_count;
-                play_track(track_index);
-                //printf("\n当前曲目: %s\n", wav_files[track_index]);
-                LOG_INFO("切换到下一曲目: %s", wav_files[track_index]);
+                if (play_track(track_index) == 0) {
+                    LOG_INFO("切换到下一曲目: %s", wav_files[track_index]);
+                } else {
+                    LOG_ERROR("切换到下一曲目失败");
+                }
 
             } else if (input == 'b') { // 'b' 键切换到上一曲目
                 LOG_USER("用户操作: 切换到上一曲目");
@@ -387,9 +372,11 @@ void *control_thread_func(void *arg) {
                 exit_flag = false;
                 pause_flag = false;
                 track_index = (track_index - 1 + wav_file_count) % wav_file_count;
-                play_track(track_index);
-                //printf("\n当前曲目: %s\n", wav_files[track_index]);
-                LOG_INFO("切换到上一曲目: %s", wav_files[track_index]);
+                if (play_track(track_index) == 0) {
+                    LOG_INFO("切换到上一曲目: %s", wav_files[track_index]);
+                } else {
+                    LOG_ERROR("切换到上一曲目失败");
+                }
             } else if (input == 'f') { // 快进10秒
                 LOG_USER("用户操作: 快进10秒");
                 pthread_mutex_lock(&mutex);
@@ -398,9 +385,12 @@ void *control_thread_func(void *arg) {
                 if (target > wav_header.sub_chunk2_size)
                     target = wav_header.sub_chunk2_size;
                 played_bytes = target;
-                fseek(fp, data_offset_in_file + played_bytes, SEEK_SET); // 跳转文件指针
+                if (fseek(fp, data_offset_in_file + played_bytes, SEEK_SET) == 0) {
+                    LOG_INFO("快进操作完成，跳转到位置: %ld", played_bytes);
+                } else {
+                    LOG_ERROR("快进操作失败，文件定位错误");
+                }
                 pthread_mutex_unlock(&mutex);
-                LOG_INFO("快进操作完成");
             } else if (input == 'r') { // 快退10秒
                 LOG_USER("用户操作: 快退10秒");
                 pthread_mutex_lock(&mutex);
@@ -409,11 +399,15 @@ void *control_thread_func(void *arg) {
                 if (target < 0)
                     target = 0;
                 played_bytes = target;
-                fseek(fp, data_offset_in_file + played_bytes, SEEK_SET); // 跳转文件指针
+                if (fseek(fp, data_offset_in_file + played_bytes, SEEK_SET) == 0) {
+                    LOG_INFO("快退操作完成，跳转到位置: %ld", played_bytes);
+                } else {
+                    LOG_ERROR("快退操作失败，文件定位错误");
+                }
                 pthread_mutex_unlock(&mutex);
-                LOG_INFO("快退操作完成");
-             } else if (input == 's') { // 's' 键切换倍速
+            } else if (input == 's') { // 's' 键切换倍速
                 pthread_mutex_lock(&mutex);
+                float old_speed = playback_speed;
                 if (playback_speed == 0.5) {
                     playback_speed = 1.0;
                 } else if (playback_speed == 1.0) {
@@ -423,17 +417,19 @@ void *control_thread_func(void *arg) {
                 } else {
                     playback_speed = 0.5;
                 }
-                //printf("\n当前播放速度: %fx\n", playback_speed);
+                LOG_USER("用户操作: 切换播放速度从 %.1fx 到 %.1fx", old_speed, playback_speed);
                 pthread_mutex_unlock(&mutex);
             } else if (input == 'e') { // 'e' 键切换均衡器开关
                 equalizer.enabled = !equalizer.enabled;
-                //printf("\n均衡器: %s\n", equalizer.enabled ? "开启" : "关闭");
+                LOG_USER("用户操作: %s均衡器", equalizer.enabled ? "开启" : "关闭");
             } else if (input >= '0' && input <= '3') { // 数字键0-3切换均衡器预设
                 eq_preset_t preset = (eq_preset_t)(input - '0');
                 if (preset < EQ_NUM_PRESETS) {
                     equalizer_set_preset(&equalizer, preset);
-                    //printf("\n切换到均衡器预设: %d\n", preset);
+                    LOG_USER("用户操作: 切换到均衡器预设 %d", preset);
                 }
+            } else {
+                LOG_USER("用户操作: 无效按键 '%c'", input);
             }
         } else {
             continue; // 没有输入则继续循环

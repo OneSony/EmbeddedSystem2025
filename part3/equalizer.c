@@ -163,11 +163,16 @@ void equalizer_init(audio_equalizer_t *eq, int sample_rate) {
     for (int i = 0; i < NUM_EQ_BANDS; i++) {
         fir_filter_init(&eq->bands[i], center_freqs[i], eq->gains[i], sample_rate, FIR_FILTER_ORDER);
     }
+    
+    LOG_INFO("均衡器初始化完成，采样率: %d Hz", sample_rate);
 }
 
 // 设置均衡器预设
 void equalizer_set_preset(audio_equalizer_t *eq, eq_preset_t preset) {
-    if (preset >= EQ_NUM_PRESETS) return;
+    if (preset >= EQ_NUM_PRESETS) {
+        LOG_ERROR("无效的均衡器预设: %d", preset);
+        return;
+    }
     
     eq->current_preset = preset;
     
@@ -176,6 +181,9 @@ void equalizer_set_preset(audio_equalizer_t *eq, eq_preset_t preset) {
         eq->gains[i] = eq_presets[preset][i];
         eq->bands[i].gain = pow(10.0, eq->gains[i] / 20.0);
     }
+    
+    const char* preset_names[] = {"Flat", "Bass Boost", "Treble Boost", "Voice Boost"};
+    LOG_INFO("均衡器切换到预设: %s", preset_names[preset]);
 }
 
 // 处理音频数据
@@ -208,4 +216,8 @@ void equalizer_cleanup(audio_equalizer_t *eq) {
     for (int i = 0; i < NUM_EQ_BANDS; i++) {
         memset(eq->bands[i].delay_line, 0, sizeof(eq->bands[i].delay_line));
     }
+    
+    // 清理资源（如果有动态分配的内存）
+    memset(eq, 0, sizeof(audio_equalizer_t));
+    LOG_INFO("均衡器资源清理完成");
 } 

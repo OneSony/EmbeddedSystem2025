@@ -10,7 +10,6 @@
 int load_wav_files_from_dir(const char *dir_path) {
     DIR *dir = opendir(dir_path);
     if (!dir) {
-        printf("无法打开目录: %s\n", dir_path);
         LOG_ERROR("无法打开目录: %s", dir_path);
         return -1;
     }
@@ -18,7 +17,6 @@ int load_wav_files_from_dir(const char *dir_path) {
     wav_file_count = 0;
     while ((entry = readdir(dir)) != NULL) {
 		if (strlen(dir_path) + 1 + strlen(entry->d_name) + 1 > MAX_FILENAME_LEN) {
-			printf("文件路径过长: %s/%s\n", dir_path, entry->d_name);
 			LOG_ERROR("文件路径过长: %s/%s", dir_path, entry->d_name);
 			return -1;
 		}
@@ -38,7 +36,6 @@ int load_wav_files_from_dir(const char *dir_path) {
 
 // 自定义信号处理函数
 void handle_sigint(int sig) {
-    printf("\n正在退出...\n");
     LOG_INFO("收到退出信号，正在退出程序");
 
 	if (playback_thread != 0) {
@@ -122,11 +119,14 @@ int main(int argc, char *argv [])
 {	
     // 初始化日志系统
     if (init_logger("music_player.log") != 0) {
-        printf("初始化日志系统失败\n");
         return -1;
     }
     
     LOG_INFO("音乐播放器程序启动");
+    LOG_INFO("命令行参数个数: %d", argc);
+    for (int i = 0; i < argc; i++) {
+        LOG_INFO("参数[%d]: %s", i, argv[i]);
+    }
     
 	signal(SIGINT, handle_sigint);
 
@@ -143,16 +143,12 @@ int main(int argc, char *argv [])
 				// 如果是目录，读取所有wav文件
 				struct stat st;
 				if (stat(optarg, &st) == 0 && S_ISDIR(st.st_mode)) {
+					LOG_INFO("检测到目录参数: %s", optarg);
 					if (load_wav_files_from_dir(optarg) != 0 || wav_file_count == 0) {
-						//printf("目录下没有wav文件\n");
 						LOG_ERROR("目录下没有wav文件或加载失败");
 						close_logger();
 						return 0;
 					}
-					/*printf("目录下wav文件:\n");
-					for (int i = 0; i < wav_file_count; ++i) {
-						printf("%s\n", wav_files[i]);
-					}*/
 
 				} else {
 					// 把这首加到list
@@ -162,7 +158,6 @@ int main(int argc, char *argv [])
 						wav_file_count++;
 						LOG_INFO("添加音频文件: %s", optarg);
 					} else {
-						printf("wav文件数量超过限制\n");
 						LOG_ERROR("wav文件数量超过限制");
 						close_logger();
 						return 0;
@@ -172,8 +167,15 @@ int main(int argc, char *argv [])
 		}
 	}
 
+	if (wav_file_count == 0) {
+		LOG_ERROR("没有找到任何音频文件");
+		close_logger();
+		return 0;
+	}
+
 	enable_raw_mode(); // 启用非标准模式
 	LOG_INFO("启用终端原始模式");
+	LOG_INFO("创建控制线程和UI线程");
 	
 	pthread_create(&control_thread, NULL, control_thread_func, NULL);
 	pthread_create(&ui_thread, NULL, ui_thread_func, NULL);
@@ -186,7 +188,6 @@ int main(int argc, char *argv [])
 	disable_raw_mode(); // 恢复标准模式
 	LOG_INFO("恢复终端标准模式");
 
-	printf("\n结束\n");
 	LOG_INFO("音乐播放器程序正常结束");
 	close_logger();
 
