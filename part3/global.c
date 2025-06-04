@@ -13,7 +13,7 @@ unsigned int rate;
 unsigned char *buff = NULL;
 
 // 周期数
-int periods = 4;
+int periods = 2;
 // 一个周期的大小，这里虽然是设置的字节大小，但是在有时候需要将此大小转换为帧，所以在用的时候要换算成帧数大小才可以
 snd_pcm_uframes_t period_size = 12 * 1024;
 snd_pcm_uframes_t frames;

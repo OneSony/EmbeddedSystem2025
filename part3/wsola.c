@@ -93,10 +93,23 @@ int wsola_state_init(WsolaState *st,
                         .input_idx = 0,
                         .output_idx = 0 };
     st->curr_frame = malloc(cfg->frame_size * num_channels * sizeof(float));
+    if (!st->curr_frame) return -1;
+
     st->prev_frame = malloc(cfg->frame_size * num_channels * sizeof(float));
-    st->fout_size = max_out_frames * num_channels;
+    if (!st->prev_frame) {
+        free(st->curr_frame);
+        st->curr_frame = NULL;
+        return -1;
+    }
+
     st->fout = malloc(st->fout_size * sizeof(float));
-    if (!st->curr_frame || !st->prev_frame) return -1;
+    if (!st->fout) {
+        free(st->curr_frame);
+        free(st->prev_frame);
+        st->curr_frame = NULL;
+        st->prev_frame = NULL;
+        return -1;
+    }
     // 先填一个全零的“前一帧”
     memset(st->prev_frame, 0, cfg->frame_size * num_channels * sizeof(float));
     return 0;

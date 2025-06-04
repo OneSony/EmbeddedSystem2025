@@ -23,7 +23,7 @@ int play_track(int track_index) {
 
     if (wav_header.audio_format != 1) { // 1表示PCM格式
 	    LOG_ERROR("不支持的音频格式: %d", wav_header.audio_format);
-	    return 0;
+	    return -1;
 	}
     
     // 跳过非data块，找到data块

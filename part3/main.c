@@ -74,6 +74,13 @@ void handle_sigint(int sig) {
 
     // 恢复终端模式
     disable_raw_mode();
+	LOG_INFO("恢复终端标准模式");
+
+	for (int i = 0; i < wav_file_count; i++) {
+		if (wav_files[i]) free(wav_files[i]);
+	}
+
+	LOG_INFO("音乐播放器程序正常结束");
 
     // 关闭日志系统
     close_logger();
@@ -174,7 +181,7 @@ int main(int argc, char *argv [])
 	}
 
 	enable_raw_mode(); // 启用非标准模式
-	LOG_INFO("启用终端原始模式");
+	LOG_INFO("启用非标准终端模式");
 	LOG_INFO("创建控制线程和UI线程");
 	
 	pthread_create(&control_thread, NULL, control_thread_func, NULL);
@@ -188,7 +195,11 @@ int main(int argc, char *argv [])
 	disable_raw_mode(); // 恢复标准模式
 	LOG_INFO("恢复终端标准模式");
 
+	for (int i = 0; i < wav_file_count; i++) {
+		if (wav_files[i]) free(wav_files[i]);
+	}
 	LOG_INFO("音乐播放器程序正常结束");
+
 	close_logger();
 
 	printf("\033[H\033[J"); // 清屏并移动光标到左上角

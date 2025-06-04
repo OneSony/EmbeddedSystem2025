@@ -26,6 +26,8 @@ void free_pcm_resources() {
         pcm_handle = NULL;
     }
 
+    equalizer_cleanup(&equalizer); // 清理均衡器
+
     wsola_state_free(&ws_state);
   
     LOG_INFO("PCM资源释放完成");
