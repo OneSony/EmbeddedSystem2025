@@ -3,7 +3,10 @@
 int play_track(int track_index) {
     pthread_mutex_lock(&mutex);
     exit_flag = false; // 重置退出标志
+    played_bytes = 0;
+    long volume = current_volume; // 使用局部变量, 只有键盘控制的部分直接修改全局变量
     pthread_mutex_unlock(&mutex);
+
     if (track_index < 0 || track_index >= wav_file_count) {
         LOG_ERROR("无效的曲目索引: %d", track_index);
         return -1;
@@ -133,7 +136,6 @@ int play_track(int track_index) {
 	}
 
     //设置音量
-    long volume = current_volume; // 使用局部变量, 只有键盘控制的部分直接修改全局变量
     const int max_volume = 100;
     const int min_volume = 0;
 

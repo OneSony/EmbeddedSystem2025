@@ -139,9 +139,6 @@ void *playback_thread_func(void *arg) {
     fseek(fp, sizeof(struct WAV_HEADER), SEEK_SET); // 跳过WAV头
     // 清空缓冲区，避免开头杂音
     memset(buff, 0, buffer_size * MAX_SPEED);
-    pthread_mutex_lock(&mutex);
-    played_bytes = 0;
-    pthread_mutex_unlock(&mutex);
     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
   
     LOG_INFO("播放线程开始");
