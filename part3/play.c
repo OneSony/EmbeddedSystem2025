@@ -41,7 +41,8 @@ int init_pcm() {
     }
 
     pcm_name = strdup("default");
-    if (snd_pcm_open(&pcm_handle, pcm_name, SND_PCM_STREAM_PLAYBACK, 0) < 0) {
+    // 添加SND_PCM_NONBLOCK标志实现非阻塞打开
+    if (snd_pcm_open(&pcm_handle, pcm_name, SND_PCM_STREAM_PLAYBACK, SND_PCM_NONBLOCK) < 0) {
         LOG_ERROR("打开PCM设备失败");
 		free_pcm_resources();
         return 1;
@@ -172,6 +173,12 @@ void *playback_thread_func(void *arg) {
 
         int read_bytes = fread(buff, 1, read_size, fp);
 
+        // 对音频数据应用均衡器处理（仅支持16位音频）
+        if (wav_header.bits_per_sample == 16 && equalizer.enabled) {
+            int num_samples = read_bytes / wav_header.block_align;
+            equalizer_process_audio(&equalizer, (int16_t *)buff, num_samples, wav_header.num_channels);
+        }
+
         // 只写入完整帧，丢弃不足一帧的数据
         int in_frames = read_bytes / bytes_per_frame;
 
@@ -195,12 +202,6 @@ void *playback_thread_func(void *arg) {
             out_frames = frame_per_buffer; // 截断输出帧数
         }
 
-        // 对音频数据应用均衡器处理（仅支持16位音频）
-        if (wav_header.bits_per_sample == 16 && equalizer.enabled) {
-            int num_samples = read_bytes / wav_header.block_align;
-            equalizer_process_audio(&equalizer, (int16_t *)buff, num_samples, wav_header.num_channels);
-        }
-
         int written = 0;
         while (written < out_frames) {
             pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
@@ -213,11 +214,12 @@ void *playback_thread_func(void *arg) {
                     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
                     snd_pcm_prepare(pcm_handle);
                     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
-
+                } else if (ret == -EAGAIN) {
+                    // 非阻塞模式下缓冲区满，短暂等待后重试
+                    usleep(1000); // 等待1ms
+                    continue;
                 } else {
                     LOG_ERROR("写入音频接口失败: 返回值=%d, 错误=%s", ret, snd_strerror(ret));
-
-                    //TODO
                     pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, NULL); // 防止中断
                     pthread_mutex_lock(&mutex);
                     error_flag = true;
@@ -225,6 +227,9 @@ void *playback_thread_func(void *arg) {
                     pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL); // 恢复中断
                     break;
                 }
+            } else if (ret == 0) {
+                // 没有写入任何数据，短暂等待
+                usleep(1000); // 等待1ms
             } else {
                 written += ret;
             }

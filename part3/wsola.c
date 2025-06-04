@@ -93,10 +93,14 @@ int wsola_state_init(WsolaState *st,
                         .input_idx = 0,
                         .output_idx = 0 };
     st->curr_frame = malloc(cfg->frame_size * num_channels * sizeof(float));
-    if (!st->curr_frame) return -1;
+    if (!st->curr_frame) {
+        LOG_ERROR("WSOLA: curr_frame malloc failed");
+        return -1;
+    }
 
     st->prev_frame = malloc(cfg->frame_size * num_channels * sizeof(float));
     if (!st->prev_frame) {
+        LOG_ERROR("WSOLA: prev_frame malloc failed");
         free(st->curr_frame);
         st->curr_frame = NULL;
         return -1;
@@ -104,6 +108,7 @@ int wsola_state_init(WsolaState *st,
 
     st->fout = malloc(st->fout_size * sizeof(float));
     if (!st->fout) {
+        LOG_ERROR("WSOLA: fout malloc failed");
         free(st->curr_frame);
         free(st->prev_frame);
         st->curr_frame = NULL;

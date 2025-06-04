@@ -149,7 +149,7 @@ double fir_filter_process_sample(fir_filter_t *filter, double input) {
 // 初始化均衡器
 void equalizer_init(audio_equalizer_t *eq, int sample_rate) {
     eq->sample_rate = sample_rate;
-    eq->enabled = true;
+    eq->enabled = false;
     eq->current_preset = EQ_PRESET_FLAT;
     
     // 初始化各频段增益为0
