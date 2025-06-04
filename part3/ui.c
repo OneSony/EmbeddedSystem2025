@@ -19,11 +19,18 @@ const char* get_preset_name(eq_preset_t preset) {
 void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_file_count, char **wav_files, int pause_flag, float playback_speed) {
     printf("\033[H"); // 只移动光标到左上角，不清屏
 
+    // 曲目列表
+    printf("Tracklist:\n");
+    for (int i = 0; i < wav_file_count; ++i) {
+        if (i == track_index) printf(" > %s\n", wav_files[i]);
+        else printf("   %s\n", wav_files[i]);
+    }
+
     // 统一进度条和音量条长度
     int bar_len = 40;
 
     // 进度条
-    printf("Progress: [");
+    printf("\nProgress:  [");
     int pos = (total_sec > 0) ? (cur_sec * bar_len) / total_sec : 0;
     for (int i = 0; i < bar_len; ++i) {
         if (i < pos) printf("#");
@@ -32,7 +39,7 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_fi
     printf("] %d/%d sec          \n", cur_sec, total_sec);
 
     // 音量条
-    printf("Volume:   [");
+    printf("Volume:    [");
     int vol_bar = (volume * bar_len) / 100;
     for (int i = 0; i < bar_len; ++i) {
         if (i < vol_bar) printf("#");
@@ -41,25 +48,22 @@ void draw_ui(int cur_sec, int total_sec, int volume, int track_index, int wav_fi
     printf("] %3d%%\n", volume);
 
     // 播放/暂停状态
-    printf("Status:   [%s]\n", pause_flag ? "Paused " : "Playing");
+    printf("Status:    [%s]\n", pause_flag ? "Paused " : "Playing");
     // 播放速率
-    printf("Speed:    [%.1fx]\n", playback_speed);
+    printf("Speed:     [%.1fx]\n", playback_speed);
 
     // 均衡器状态
     printf("Equalizer: [%s] - %-12s\n", 
            equalizer.enabled ? "ON " : "OFF", 
            get_preset_name(equalizer.current_preset));
-
-    // 曲目列表
-    printf("Tracklist:\n");
-    for (int i = 0; i < wav_file_count; ++i) {
-        if (i == track_index) printf(" > %s\n", wav_files[i]);
-        else printf("   %s\n", wav_files[i]);
-    }
     
-    printf("\nControls:\n");
-    printf("[n] Next  [b] Prev  [f] Forward  [r] Rewind  [s] Speed  [p] Pause/Resume  [q] Quit\n");
-    printf("[e] Toggle EQ  [0] Flat  [1] Bass  [2] Treble  [3] Voice\n");
+    printf("\n");
+    printf("[+] Volume Up    [-] Volume Down   [p] Pause/Resume\n");
+    printf("[n] Next Track   [b] Prev Track\n");
+    printf("[f] Forward 10s  [r] Rewind 10s\n");
+    printf("[s] Change Speed\n");
+    printf("[e] Toggle EQ    [0] Flat   [1] Bass  [2] Treble  [3] Voice\n");
+    printf("[q] Quit\n");
     fflush(stdout);
 }
 

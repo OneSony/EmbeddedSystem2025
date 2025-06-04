@@ -24,7 +24,11 @@ int load_wav_files_from_dir(const char *dir_path) {
         if (len > 4 && strcmp(entry->d_name + len - 4, ".wav") == 0) {
             if (wav_file_count < MAX_WAV_FILES) {
                 wav_files[wav_file_count] = malloc(MAX_FILENAME_LEN);
-                snprintf(wav_files[wav_file_count], MAX_FILENAME_LEN, "%s/%s", dir_path, entry->d_name);
+				if (dir_path[strlen(dir_path) - 1] == '/') {
+					snprintf(wav_files[wav_file_count], MAX_FILENAME_LEN, "%s%s", dir_path, entry->d_name);
+				} else {
+					snprintf(wav_files[wav_file_count], MAX_FILENAME_LEN, "%s/%s", dir_path, entry->d_name);
+				}
                 wav_file_count++;
             }
         }
